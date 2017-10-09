@@ -187,7 +187,7 @@ def decoding_layer_infer(encoder_state, dec_cell, dec_embeddings, start_of_seque
     :return: BasicDecoderOutput containing inference logits and sample_id
     """
     # TODO: Implement Function
-
+    
     start_tokens = tf.tile(tf.constant([start_of_sequence_id],dtype=tf.int32),[batch_size],name='start_tokens')
     inference_helper=tf.contrib.seq2seq.GreedyEmbeddingHelper(dec_embeddings,
                                                              start_tokens,
