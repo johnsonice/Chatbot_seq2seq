@@ -13,10 +13,11 @@ import re
 import numpy as np
 import config 
 import pickle 
+from collections import Counter
 from nltk.tokenize import sent_tokenize, word_tokenize
 
 #%%
-CODES = {'<PAD>': 0, '<EOS>': 1, '<UNK>': 2, '<GO>': 3 }
+
 
 #%%
 #########################################
@@ -84,6 +85,7 @@ def train_test_split(context,answers):
     """
     devide dateset into training and test sets 
     """
+    print("Saving to txt pickle")
     # create directory to hold processed data
     _make_dir(config.PROCESSED_PATH)
     
@@ -168,23 +170,50 @@ def save_tokenized_data(text_pickle_path):
     
     return train_enc_tokens, train_dec_tokens, test_enc_tokens,test_dec_tokens
 
-
+## load processed_text and save processed_tokenize
 _ = save_tokenized_data(os.path.join(config.PROCESSED_PATH,'processed_text.p'))
     
 #%%
-text_pickle_path = os.path.join(config.PROCESSED_PATH,'processed_text.p')
-train_enc, train_dec, test_enc,test_dec = pickle.load(open(text_pickle_path,'rb'))
+########################
+## Now build vocabulary 
+########################
+CODES = {'<PAD>': 0, '<EOS>': 1, '<UNK>': 2, '<GO>': 3 }
+
+## a recursive function to flatten nested lists 
+def _flatten(container):
+    for i in container:
+        if isinstance(i, (list,tuple)):
+            for j in _flatten(i):
+                yield j
+        else:
+            yield i
+
+def build_vocab(pickle_file_path,CODES):
+    tokens = pickle.load(open(pickle_file_path,'rb'))
+    all_words = []
+    for t in tokens:
+        all_words.extend(list(_flatten(t)))
+    
+    counts = Counter(all_words)
+    vocab = sorted(counts, key=counts.get, reverse=True)
+    vocab_to_int = {word: ii for ii, word in enumerate(vocab, len(CODES))}  # enumerate start from len(CODES)
+    vocab_to_int = dict(vocab_to_int,**CODES)
+    int_to_vocab = {v_i: v for v, v_i in vocab_to_int.items()}
+    
+    save_file_path = os.path.join(config.PROCESSED_PATH,'vocab.p')
+    pickle.dump((vocab_to_int,int_to_vocab),open(save_file_path,'wb'))
+    
+    return vocab_to_int,int_to_vocab
+
+vocab_to_int,int_to_vocab = build_vocab(os.path.join(config.PROCESSED_PATH,'processed_tokens.p'),CODES)
 
 #%%
+    
+    
+    
+    
+    
 
-    
-    
-    
-    
-    
-    
-    
-            
 
             
             

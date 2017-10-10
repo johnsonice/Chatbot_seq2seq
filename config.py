@@ -14,7 +14,7 @@ PROCESSED_PATH = './data/processed'
 CPT_PATH = 'checkpoints'
 
 
-TESTSET_SIZE = 0.2 
+TESTSET_SIZE = 0.1 
 
 
 ## model_inputs 
