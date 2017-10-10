@@ -15,6 +15,30 @@ from tensorflow.python.layers.core import Dense
 #%%
 ## Build Seq2seq model 
 
+## model_inputs 
+# Number of Epochs
+epochs = 1
+# Batch Size
+batch_size = 8
+# RNN Size
+rnn_size = 300
+# Number of Layers
+num_layers = 2
+# Embedding Size
+encoding_embedding_size = 300
+decoding_embedding_size = 300
+# Learning Rate
+learning_rate = 0.0001
+# Dropout Keep Probability
+keep_probability = 0.5
+display_step = 1000
+source_vocab_size = 10000
+target_vocab_size = 10000
+
+hrnn_size = 300
+hrnn_num_layers = 2
+hrnn_kepp_probability = 0.5
+
 
 
 #%%

@@ -99,7 +99,9 @@ def train_test_split(context,answers):
             test_dec.append(answers[i])
         else:
             train_enc.append(context[i])
-            train_dec.append(context[i])
+            train_dec.append(answers[i])
+        
+        if i % 10000 == 0 : print('Finishing: ',i)
     
     save_file_path = os.path.join(config.PROCESSED_PATH,'processed_text.p')
     pickle.dump((train_enc, train_dec, test_enc,test_dec),open(save_file_path,'wb'))
@@ -133,31 +135,35 @@ def _basic_tokenizer(line,normalize_digits=True):
     
     return words 
 
-test = 'this is the gdp of America 1234%ad. it is going to grow at 5% each year from now on.'
-print(_basic_tokenizer(test))
+#test = 'this is the gdp of America 1234%ad. it is going to grow at 5% each year from now on.'
+#print(_basic_tokenizer(test))
 
 #%%
 def save_tokenized_data(text_pickle_path):
     train_enc, train_dec, test_enc,test_dec = pickle.load(open(text_pickle_path,'rb'))
     train_enc_tokens, train_dec_tokens, test_enc_tokens,test_dec_tokens = [],[],[],[]
+    save_file_path = os.path.join(config.PROCESSED_PATH,'processed_tokens.p')
     
     for t in train_enc:
         enc_convo = [_basic_tokenizer(i) for i in t]
         train_enc_tokens.append(enc_convo)
-        
+    print('Train_enc_token done.')
+    
     for t in train_dec:
-        enc_convo = [_basic_tokenizer(i) for i in t]
+        enc_convo = _basic_tokenizer(t)
         train_dec_tokens.append(enc_convo)
+    print('Train_dec_token done.')
     
     for t in test_enc:
         enc_convo = [_basic_tokenizer(i) for i in t]
         test_enc_tokens.append(enc_convo)
-        
-    for t in test_dec:
-        enc_convo = [_basic_tokenizer(i) for i in t]
-        test_dec_tokens.append(enc_convo)
+    print('Test_enc_token done.')
     
-    save_file_path = os.path.join(config.PROCESSED_PATH,'processed_tokens.p')
+    for t in test_dec:
+        enc_convo = _basic_tokenizer(t)
+        test_dec_tokens.append(enc_convo)
+    print('Test_dec_token done.')
+    
     pickle.dump((train_enc_tokens, train_dec_tokens, test_enc_tokens,test_dec_tokens),open(save_file_path,'wb'))
     
     return train_enc_tokens, train_dec_tokens, test_enc_tokens,test_dec_tokens
@@ -165,10 +171,12 @@ def save_tokenized_data(text_pickle_path):
 
 _ = save_tokenized_data(os.path.join(config.PROCESSED_PATH,'processed_text.p'))
     
-    
-    
-    
-    
+#%%
+text_pickle_path = os.path.join(config.PROCESSED_PATH,'processed_text.p')
+train_enc, train_dec, test_enc,test_dec = pickle.load(open(text_pickle_path,'rb'))
+
+#%%
+
     
     
     
