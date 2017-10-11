@@ -53,7 +53,7 @@ def model_inputs():
 
 #%%
 
-def process_decoder_input(target_data, target_vocab_to_int, batch_size):
+def process_decoder_input(target_data, target_vocab_to_int):
     """
     Preprocess target data for encoding
     :param target_data: Target Placehoder
@@ -62,6 +62,7 @@ def process_decoder_input(target_data, target_vocab_to_int, batch_size):
     :return: Preprocessed target data
     """
     # TODO: Implement Function
+    batch_size = tf.shape(target_data)[0]
     ending = tf.strided_slice(target_data,[0,0],[batch_size,-1],[1,1])
     dec_input = tf.concat([tf.fill([batch_size,1],target_vocab_to_int['<GO>']),ending],1)
     

@@ -21,7 +21,7 @@ TESTSET_SIZE = 0.1
 # Number of Epochs
 epochs = 1
 # Batch Size
-batch_size = 8
+batch_size = 2
 # RNN Size
 rnn_size = 300
 # Number of Layers
@@ -40,3 +40,6 @@ target_vocab_size = 10000
 hrnn_size = 300
 hrnn_num_layers = 2
 hrnn_kepp_probability = 0.5
+
+
+max_target_sentence_length= 50
