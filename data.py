@@ -16,8 +16,6 @@ import pickle
 from collections import Counter
 from nltk.tokenize import sent_tokenize, word_tokenize
 
-#%%
-
 
 #%%
 #########################################
@@ -209,7 +207,8 @@ vocab_to_int,int_to_vocab = build_vocab(os.path.join(config.PROCESSED_PATH,'proc
 
 #%%
     
-    
+def load_vocab(vocab_path):
+    vocab_to_int,int_to_vocab = pickle.load(open(vocab_path,'rb'))
     
     
     
