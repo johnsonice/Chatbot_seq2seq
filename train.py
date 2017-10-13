@@ -95,4 +95,15 @@ with tf.name_scope('optimization'):
 ## now test if it wokrs at all, try one step 
 
 
+with tf.Session() as sess:
+    session.run(tf.global_variables_initializer())
     
+    _,loss = session.run(
+            [train_op,cost],
+            {input_data:pad_encoder_batch,
+             targets:pad_decoder_batch,
+             lr: config.learning_rate,
+             target_sequence_length:targets_lengths,
+             source_sequence_length:sources_lengths,
+             keep_prob:config.keep_probability}
+            )
