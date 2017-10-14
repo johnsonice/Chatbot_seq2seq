@@ -20,18 +20,20 @@ from tensorflow.python.layers.core import Dense
 vocab_path = os.path.join(config.PROCESSED_PATH,'vocab.p')
 train_token_path = os.path.join(config.PROCESSED_PATH,'processed_tokens.p')
 vocab_to_int,int_to_vocab = helper.load_vocab(vocab_path)
+config.source_vocab_size = len(vocab_to_int)
+config.target_vocab_size = len(vocab_to_int)
 train_enc_tokens, train_dec_tokens, test_enc_tokens,test_dec_tokens = helper.load_training_data(train_token_path)
 
 ## get a batch of data nd pad them 
-encoder_input,decoder_input =  helper.get_batch(train_enc_tokens, train_dec_tokens,batch_size = 1,context_length=2)
-pad_encoder_batch = helper.pad_context_batch(encoder_input,vocab_to_int)
-pad_decoder_batch = helper.pad_answer_batch(decoder_input,vocab_to_int)
+pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths=  helper.get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,batch_size = 2,context_length=2)
+#pad_encoder_batch = helper.pad_context_batch(encoder_input,vocab_to_int)
+#pad_decoder_batch = helper.pad_answer_batch(decoder_input,vocab_to_int)
 
 #%%
 ## build the network 
 
 # create inpute place holder
-input_data, targets, lr, keep_prob, target_sequence_length, max_target_sequence_length, source_sequence_length = seq2seq.model_inputs()
+input_data, targets, lr, keep_prob, target_sequence_length, max_target_sequence_length, source_sequence_length,hrnn_sequence_length = seq2seq.model_inputs()
 
 # get input shape 
 input_shape = tf.shape(input_data)
@@ -48,7 +50,7 @@ with tf.variable_scope("encoder"):
 # run hrnn encoding layer 
 with tf.variable_scope("hrnn_encoder"):
     enc_output, enc_state = seq2seq.hierarchical_encoding_layer(hidden_states, config.hrnn_size, config.hrnn_num_layers, keep_prob, 
-                       source_sequence_length)
+                       hrnn_sequence_length)
     
 
 #%%
@@ -96,14 +98,15 @@ with tf.name_scope('optimization'):
 
 
 with tf.Session() as sess:
-    session.run(tf.global_variables_initializer())
+    sess.run(tf.global_variables_initializer())
     
-    _,loss = session.run(
+    _,loss = sess.run(
             [train_op,cost],
             {input_data:pad_encoder_batch,
              targets:pad_decoder_batch,
              lr: config.learning_rate,
-             target_sequence_length:targets_lengths,
-             source_sequence_length:sources_lengths,
-             keep_prob:config.keep_probability}
+             target_sequence_length:target_lengths,
+             source_sequence_length:source_lengths,
+             keep_prob:config.keep_probability,
+             hrnn_sequence_length:hrnn_lengths}
             )

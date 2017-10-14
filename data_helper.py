@@ -10,7 +10,7 @@ Created on Mon Oct  9 14:35:15 2017
 import os 
 import random 
 import re 
-#import numpy as np
+import numpy as np
 import config 
 import pickle 
 from collections import Counter
@@ -243,16 +243,25 @@ def pad_answer_batch(batch, vocab_to_int):
 
     return pad_batch
 
-def get_batch(train_enc_tokens, train_dec_tokens,batch_size = 1,context_length=2):
+def get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,batch_size = 2,context_length=2):
     ids = [1,5]
     encoder_input = [train_enc_tokens[i] for i in ids]
+    pad_encoder_input = np.array(pad_context_batch(encoder_input,vocab_to_int))
+    pad_encoder_shape = pad_encoder_input.shape
     decoder_input = [train_dec_tokens[i] for i in ids]
+    pad_decoder_input = np.array(pad_answer_batch(decoder_input,vocab_to_int))
+    pad_decoder_shape = pad_decoder_input.shape
+
+    source_sequence_length = [pad_encoder_shape[2]]*(pad_encoder_shape[0]*pad_encoder_shape[1])
+    hrnn_sequence_length = [pad_encoder_shape[1]]*pad_encoder_shape[0]
+    target_sequence_length = [pad_decoder_shape[1]]*pad_decoder_shape[0]
     
-    return encoder_input, decoder_input 
+    return pad_encoder_input, pad_decoder_input, source_sequence_length,target_sequence_length,hrnn_sequence_length
     
 #encoder_input,decoder_input =  get_batch(train_enc_tokens, train_dec_tokens,batch_size = 1,context_length=2)
 #pad_encoder_batch = pad_context_batch(encoder_input,vocab_to_int)
 #pad_decoder_batch = pad_answer_batch(decoder_input,vocab_to_int)
+    
 
 #%%
 

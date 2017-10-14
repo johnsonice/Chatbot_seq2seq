@@ -46,8 +46,9 @@ def model_inputs():
     target_sequence_length = tf.placeholder(tf.int32,(None,),name='target_sequence_length')
     max_target_sequence_length = tf.reduce_max(target_sequence_length,name='max_target_len')
     source_sequence_length = tf.placeholder(tf.int32,(None,),name='source_sequence_length')
+    hrnn_sequence_length = tf.placeholder(tf.int32,(None,),name = 'hrnn_sequence_length')
     
-    return input_data, targets, lr, keep_pro, target_sequence_length, max_target_sequence_length, source_sequence_length
+    return input_data, targets, lr, keep_pro, target_sequence_length, max_target_sequence_length, source_sequence_length,hrnn_sequence_length
 
 #input_data, targets, lr, keep_pro, target_sequence_length, max_target_sequence_length, source_sequence_length = model_inputs()
 

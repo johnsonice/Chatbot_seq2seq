@@ -34,8 +34,8 @@ learning_rate = 0.0001
 # Dropout Keep Probability
 keep_probability = 0.5
 display_step = 1000
-source_vocab_size = 10000
-target_vocab_size = 10000
+source_vocab_size = 100000
+target_vocab_size = 100000
 
 hrnn_size = 300
 hrnn_num_layers = 2
