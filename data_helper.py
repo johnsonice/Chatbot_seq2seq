@@ -89,7 +89,7 @@ def train_test_split(context,answers):
     
     # random convos to create test set 
     total_numbers = len(context)
-    test_size = int(total_numbers * config.TESTSET_SIZE)
+    test_size = int(total_numbers * config.testset_size)
     test_ids = random.sample([i for i in range(total_numbers)],test_size)
     
     train_enc, train_dec, test_enc,test_dec = [],[],[],[]
@@ -220,7 +220,7 @@ def load_training_data(train_token_path):
 
 #%%
 def sentence2id(line,vocab_to_int):
-    return [vocab_to_int.get(token,vocab_to_int['<UNK>']) for token in line]
+    return [vocab_to_int.get(token,vocab_to_int['<UNK>']) for token in line] + [vocab_to_int['<EOS>']]
 
 
 #test = ['i','am','a','research','assistant']
@@ -243,8 +243,7 @@ def pad_answer_batch(batch, vocab_to_int):
 
     return pad_batch
 
-def get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,batch_size = 2,context_length=2):
-    ids = [1,5]
+def get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,ids):
     encoder_input = [train_enc_tokens[i] for i in ids]
     pad_encoder_input = np.array(pad_context_batch(encoder_input,vocab_to_int))
     pad_encoder_shape = pad_encoder_input.shape
@@ -261,8 +260,32 @@ def get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,batch_size = 2,con
 #encoder_input,decoder_input =  get_batch(train_enc_tokens, train_dec_tokens,batch_size = 1,context_length=2)
 #pad_encoder_batch = pad_context_batch(encoder_input,vocab_to_int)
 #pad_decoder_batch = pad_answer_batch(decoder_input,vocab_to_int)
-    
 
+#%%
+### put training data into buckets 
+def bucket_training_data(train_enc_tokens,MAX_CONV_LENGTH):
+    buckets = range(1,MAX_CONV_LENGTH+1) 
+    bucket_ids = {'bucket_'+str(i):list() for i in buckets}
+    for i in range(len(train_enc_tokens)):
+        conv_length = len(train_enc_tokens[i])
+        if conv_length < MAX_CONV_LENGTH:
+            bucket_id= 'bucket_' +  str(conv_length)
+            bucket_ids[bucket_id].append(i)
+
+    return bucket_ids   
+
+def make_batches_of_bucket_ids(bucket_ids,batch_size):
+    id_batches = list() 
+    for i,v in bucket_ids.items():
+        for batch_i in range(len(v)//batch_size):
+            start_i = batch_i * batch_size
+            ## slice the right amount for the batch 
+            id_batches.append(v[start_i:start_i+batch_size])
+    
+    return id_batches
+        
+        
+        
 #%%
 
 def main():

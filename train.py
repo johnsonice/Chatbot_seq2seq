@@ -7,12 +7,13 @@ Created on Wed Oct 11 14:33:36 2017
 ### helper.py, process data, and batch data 
 import os 
 import data_helper as helper
+from random import shuffle
 #import numpy as np
 import config 
 import tensorflow as tf 
-import numpy as np 
+#import numpy as np 
 import seq2seq
-from tensorflow.python.layers.core import Dense
+#from tensorflow.python.layers.core import Dense
 #%%
 
 ## first, load and pad data 
@@ -23,11 +24,18 @@ vocab_to_int,int_to_vocab = helper.load_vocab(vocab_path)
 config.source_vocab_size = len(vocab_to_int)
 config.target_vocab_size = len(vocab_to_int)
 train_enc_tokens, train_dec_tokens, test_enc_tokens,test_dec_tokens = helper.load_training_data(train_token_path)
+bucket_ids = helper.bucket_training_data(train_enc_tokens,config.max_conv_length)
+batches =  helper.make_batches_of_bucket_ids(bucket_ids,config.batch_size)
 
 ## get a batch of data nd pad them 
-pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths=  helper.get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,batch_size = 2,context_length=2)
+
+##ids = bucket_ids['bucket_2'][:10]
+#pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths=helper.get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,ids)
+
+
 #pad_encoder_batch = helper.pad_context_batch(encoder_input,vocab_to_int)
 #pad_decoder_batch = helper.pad_answer_batch(decoder_input,vocab_to_int)
+
 
 #%%
 ## build the network 
@@ -95,20 +103,51 @@ with tf.name_scope('optimization'):
 #%%
 
 ## now test if it wokrs at all, try one step 
-
-
-with tf.Session() as sess:
-    sess.run(tf.global_variables_initializer())
     
-    for x in range(100):
-        _,loss = sess.run(
-                [train_op,cost],
-                {input_data:pad_encoder_batch,
-                 targets:pad_decoder_batch,
-                 lr: config.learning_rate,
-                 target_sequence_length:target_lengths,
-                 source_sequence_length:source_lengths,
-                 keep_prob:config.keep_probability,
-                 hrnn_sequence_length:hrnn_lengths}
-                )
-        print(loss)
+#ids = bucket_ids['bucket_1'][:10]
+#pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths=helper.get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,ids)
+with tf.Session() as sess:
+    saver= tf.train.Saver(max_to_keep=5)
+    sess.run(tf.global_variables_initializer())
+    for e in range(1,config.eopchs+1):
+        shuffle(batches)
+        for idx,ids in enumerate(batches,1):
+            try:
+                pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths=helper.get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,ids)
+                _,loss = sess.run(
+                        [train_op,cost],
+                        {input_data:pad_encoder_batch,
+                         targets:pad_decoder_batch,
+                         lr: config.learning_rate,
+                         target_sequence_length:target_lengths,
+                         source_sequence_length:source_lengths,
+                         keep_prob:config.keep_probability,
+                         hrnn_sequence_length:hrnn_lengths}
+                        )
+                
+
+            except:
+                continue
+    
+    #                batch_valid_logits = sess.run(
+    #                    inference_logits,
+    #                    {input_data: valid_sources_batch,
+    #                     source_sequence_length: valid_sources_lengths,
+    #                     target_sequence_length: valid_targets_lengths,
+    #                     keep_prob: 1.0})
+            
+            if idx % 100 == 0:
+                
+#                batch_train_logits = sess.run(
+#                        inference_logits,
+#                        {input_data: pad_encoder_batch,
+#                         source_sequence_length: source_lengths,
+#                         target_sequence_length: target_lengths,
+#                         hrnn_sequence_length:hrnn_lengths,
+#                         keep_prob: 1.0})
+                    
+                print('epoch: {}/{}, iteration: {}/{}, loss: {}'.format(e,config.eopchs,idx,len(batches),loss))
+#                result = [int_to_vocab[l] for s in batch_train_logits for l in s if l != 0]
+#                print(result)
+            if idx % 1000 == 0 :
+                saver.save(sess, os.path.join(config.CPT_PATH,'hrnn_bot'))
