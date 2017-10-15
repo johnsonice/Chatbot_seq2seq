@@ -14,14 +14,13 @@ PROCESSED_PATH = './data/processed'
 CPT_PATH = 'checkpoints'
 
 testset_size = 0.1
-TESTSET_SIZE = 0.1 
 max_conv_length = 10
 eopchs = 10
 ## model_inputs 
 # Number of Epochs
 epochs = 1
 # Batch Size
-batch_size = 10
+batch_size = 16
 # RNN Size
 rnn_size = 300
 # Number of Layers

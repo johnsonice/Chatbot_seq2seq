@@ -112,29 +112,20 @@ with tf.Session() as sess:
     for e in range(1,config.eopchs+1):
         shuffle(batches)
         for idx,ids in enumerate(batches,1):
-            try:
-                pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths=helper.get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,ids)
-                _,loss = sess.run(
-                        [train_op,cost],
-                        {input_data:pad_encoder_batch,
-                         targets:pad_decoder_batch,
-                         lr: config.learning_rate,
-                         target_sequence_length:target_lengths,
-                         source_sequence_length:source_lengths,
-                         keep_prob:config.keep_probability,
-                         hrnn_sequence_length:hrnn_lengths}
-                        )
+            
+            pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths=helper.get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,ids)
+            if target_lengths[0]>config.max_target_sentence_length: continue
+            _,loss = sess.run(
+                    [train_op,cost],
+                    {input_data:pad_encoder_batch,
+                     targets:pad_decoder_batch,
+                     lr: config.learning_rate,
+                     target_sequence_length:target_lengths,
+                     source_sequence_length:source_lengths,
+                     keep_prob:config.keep_probability,
+                     hrnn_sequence_length:hrnn_lengths}
+                    )
                 
-
-            except:
-                continue
-    
-    #                batch_valid_logits = sess.run(
-    #                    inference_logits,
-    #                    {input_data: valid_sources_batch,
-    #                     source_sequence_length: valid_sources_lengths,
-    #                     target_sequence_length: valid_targets_lengths,
-    #                     keep_prob: 1.0})
             
             if idx % 100 == 0:
                 
