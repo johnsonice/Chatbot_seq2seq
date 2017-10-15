@@ -100,7 +100,7 @@ with tf.name_scope('optimization'):
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     
-    for x in range(1000):
+    for x in range(100):
         _,loss = sess.run(
                 [train_op,cost],
                 {input_data:pad_encoder_batch,
