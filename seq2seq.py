@@ -112,7 +112,33 @@ def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob,
 #                   source_sequence_length, source_vocab_size, 
 #                   encoding_embedding_size)
 
-
+def bidirection_encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob, 
+                   source_sequence_length, source_vocab_size, 
+                   encoding_embedding_size):
+    shape = tf.shape(rnn_inputs)  ## get shape for input tensor 
+    s0 = shape[0]*shape[1]
+    s1 = shape[2]
+    rnn_inputs = tf.reshape(rnn_inputs,[s0,s1])
+    # Embeding
+    enc_embed_input = tf.contrib.layers.embed_sequence(rnn_inputs,source_vocab_size,encoding_embedding_size)
+    # RNN cell 
+    
+    for layer in range(num_layers):
+        with tf.variable_scope('encoder_{}'.format(layer)):
+            cell_fw = tf.contrib.rnn.LSTMCell(rnn_size,initializer=tf.random_uniform_initializer(-0.1, 0.1))
+            cell_fw = tf.contrib.rnn.DropoutWrapper(cell_fw,input_keep_prob = keep_prob)
+            cell_bw = tf.contrib.rnn.LSTMCell(rnn_size,initializer=tf.random_uniform_initializer(-0.1, 0.1))
+            cell_bw = tf.contrib.rnn.DropoutWrapper(cell_bw,input_keep_prob = keep_prob)
+            enc_output, enc_state = tf.nn.bidirectional_dynamic_rnn( 
+                                       cell_fw, 
+                                       cell_bw,                     
+                                       enc_embed_input,
+                                       source_sequence_length,
+                                       dtype=tf.float32)
+            
+    enc_output = tf.concat(enc_output,2)
+    hidden_states = tf.reshape(enc_output[:,-1,:],[shape[0],shape[1],rnn_size*2])
+    return enc_output, enc_state,hidden_states
 #%%
 
 def hierarchical_encoding_layer(hrnn_inputs,hrnn_size,hrnn_num_layers,hrnn_keep_prob,hrnn_source_sequence_length):
@@ -255,3 +281,61 @@ def decoding_layer(dec_input, encoder_state,
                                                         batch_size, keep_prob)
         
     return training_decoder_output, inference_decoder_output
+
+def decoding_layer_with_attention(dec_input, encoder_output,encoder_state,
+                   source_sequence_length,target_sequence_length, max_target_sequence_length,
+                   rnn_size,
+                   num_layers, target_vocab_to_int, target_vocab_size,
+                   batch_size, keep_prob, decoding_embedding_size):
+    
+    # 1. decoder embeding
+    dec_embeddings = tf.Variable(tf.random_uniform([target_vocab_size,decoding_embedding_size]))
+    dec_embed_input = tf.nn.embedding_lookup(dec_embeddings,dec_input)
+    
+        # decoder cell 
+    def make_cell(rnn_size,keep_prob):
+        enc_cell = tf.contrib.rnn.LSTMCell(rnn_size,
+                                          initializer=tf.random_uniform_initializer(-0.1, 0.1))
+        drop_cell = tf.contrib.rnn.DropoutWrapper(enc_cell,output_keep_prob=keep_prob)
+        return drop_cell
+    
+    dec_cell = tf.contrib.rnn.MultiRNNCell([make_cell(rnn_size,keep_prob) for _ in range(num_layers)])
+    
+    # 3. output layer to translate the decoder's output at each time 
+    output_layer = Dense(target_vocab_size,
+                         kernel_initializer=tf.truncated_normal_initializer(mean = 0.0, stddev=0.1))
+    
+    attn_mech = tf.contrib.seq2seq.LuongAttention(
+            rnn_size,
+            encoder_output,
+            source_sequence_length,
+            name='LuongAttention')
+    
+    dec_cell = tf.contrib.seq2seq.AttentionWrapper(dec_cell,attn_mech,rnn_size)
+    decoder_initial_state = dec_cell.zero_state(batch_size, tf.float32).clone(cell_state=encoder_state)
+    
+    # 4. Set up a training decoder 
+    with tf.variable_scope("decode"):
+        training_decoder_output = decoding_layer_train(decoder_initial_state, dec_cell, 
+                                                       dec_embed_input, target_sequence_length, 
+                                                       max_target_sequence_length, output_layer, 
+                                                       keep_prob) 
+    with tf.variable_scope("decode", reuse=True):
+        start_of_sequence_id = target_vocab_to_int['<GO>']
+        end_of_sequence_id = target_vocab_to_int['<EOS>']
+        inference_decoder_output = decoding_layer_infer(decoder_initial_state, dec_cell, dec_embeddings, 
+                                                        start_of_sequence_id, end_of_sequence_id, 
+                                                        max_target_sequence_length, target_vocab_size, output_layer, 
+                                                        batch_size, keep_prob)
+        
+    return training_decoder_output, inference_decoder_output
+
+
+    
+    
+    
+    
+    
+    
+    
+    

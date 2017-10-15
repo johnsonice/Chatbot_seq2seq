@@ -20,7 +20,7 @@ eopchs = 10
 # Number of Epochs
 epochs = 1
 # Batch Size
-batch_size = 16
+batch_size = 8
 # RNN Size
 rnn_size = 300
 # Number of Layers
