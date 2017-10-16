@@ -14,15 +14,14 @@ PROCESSED_PATH = './data/processed'
 CPT_PATH = 'checkpoints'
 
 testset_size = 0.1
-max_conv_length = 10
-eopchs = 10
+max_conv_length = 5
 ## model_inputs 
 # Number of Epochs
-epochs = 1
+epochs = 1000
 # Batch Size
 batch_size = 8
 # RNN Size
-rnn_size = 300
+rnn_size = 600
 # Number of Layers
 num_layers = 2
 # Embedding Size
@@ -31,12 +30,12 @@ decoding_embedding_size = 300
 # Learning Rate
 learning_rate = 0.0001
 # Dropout Keep Probability
-keep_probability = 0.5
+keep_probability = 0.7
 display_step = 1000
 source_vocab_size = 100000
 target_vocab_size = 100000
 
-hrnn_size = 300
+hrnn_size = 600
 hrnn_num_layers = 2
-hrnn_kepp_probability = 0.5
+hrnn_kepp_probability = 0.7
 max_target_sentence_length= 60

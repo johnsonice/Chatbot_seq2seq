@@ -104,12 +104,13 @@ with tf.name_scope('optimization'):
 
 ## now test if it wokrs at all, try one step 
     
-#ids = bucket_ids['bucket_1'][:10]
-#pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths=helper.get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,ids)
+train_ids = bucket_ids['bucket_1'][:10]
+pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths=helper.get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,ids)
+
 with tf.Session() as sess:
     saver= tf.train.Saver(max_to_keep=5)
     sess.run(tf.global_variables_initializer())
-    for e in range(1,config.eopchs+1):
+    for e in range(1,config.epochs+1):
         shuffle(batches)
         for idx,ids in enumerate(batches,1):
             
@@ -128,7 +129,19 @@ with tf.Session() as sess:
                 
             
             if idx % 100 == 0:
-                
+                train_ids = bucket_ids['bucket_1'][:10]
+                pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths=helper.get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,ids)
+                _,loss = sess.run(
+                    [train_op,cost],
+                    {input_data:pad_encoder_batch,
+                     targets:pad_decoder_batch,
+                     lr: config.learning_rate,
+                     target_sequence_length:target_lengths,
+                     source_sequence_length:source_lengths,
+                     keep_prob:config.keep_probability,
+                     hrnn_sequence_length:hrnn_lengths}
+                    )
+
 #                batch_train_logits = sess.run(
 #                        inference_logits,
 #                        {input_data: pad_encoder_batch,
@@ -137,7 +150,7 @@ with tf.Session() as sess:
 #                         hrnn_sequence_length:hrnn_lengths,
 #                         keep_prob: 1.0})
                     
-                print('epoch: {}/{}, iteration: {}/{}, loss: {}'.format(e,config.eopchs,idx,len(batches),loss))
+                print('epoch: {}/{}, iteration: {}/{}, loss: {}'.format(e,config.epochs,idx,len(batches),loss))
 #                result = [int_to_vocab[l] for s in batch_train_logits for l in s if l != 0]
 #                print(result)
             if idx % 1000 == 0 :
