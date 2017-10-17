@@ -13,6 +13,7 @@ import config
 import tensorflow as tf 
 #import numpy as np 
 import seq2seq
+import pickle
 #from tensorflow.python.layers.core import Dense
 
 
@@ -97,48 +98,49 @@ with tf.name_scope('optimization'):
 with tf.Session() as sess:
     saver= tf.train.Saver(max_to_keep=5)
     sess.run(tf.global_variables_initializer())
+    lattest_ckpt = tf.train.latest_checkpoint(config.CPT_PATH)
+    if lattest_ckpt is not None:
+        saver.restore(sess, os.path.join(lattest_ckpt))
+        print("Model restored.")
+
     for e in range(1,config.epochs+1):
-        shuffle(batches)
+        shuffle(batches)  # for debuging purpose, don't randomize batches for now 
         for idx,ids in enumerate(batches,1):
-            #ids = batches[0]
+            #ids = [18948, 18949, 18950, 18953, 18954, 18957, 18958, 18959]
             pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths=helper.get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,ids)   
+            ## for debuging
+            #pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths,max_length = pickle.load(open('debug.p','rb'))
             if target_lengths[0]>config.max_target_sentence_length: continue
-            _,loss = sess.run(
-                    [train_op,cost],
-                    {input_data:pad_encoder_batch,
-                     targets:pad_decoder_batch,
-                     lr: config.learning_rate,
-                     target_sequence_length:target_lengths,
-                     source_sequence_length:source_lengths,
-                     keep_prob:config.keep_probability,
-                     hrnn_sequence_length:hrnn_lengths}
-                    )
+            try:
+                _,loss = sess.run(
+                        [train_op,cost],
+                        {input_data:pad_encoder_batch,
+                         targets:pad_decoder_batch,
+                         lr: config.learning_rate,
+                         target_sequence_length:target_lengths,
+                         source_sequence_length:source_lengths,
+                         keep_prob:config.keep_probability,
+                         hrnn_sequence_length:hrnn_lengths}
+                        )
+            except:
+                print(ids)
+                print("target sequence length:{}, max target sequence length {}".format(target_lengths[0],config.max_target_sentence_length) )
+                pickle.dump((pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths,config.max_target_sentence_length),open('debug.p','wb'))
+                raise ValueError('something went wrong!')
                 
-            
             if idx % 100 == 0:
+                print('epoch: {}/{}, iteration: {}/{}, loss: {}'.format(e,config.epochs,idx,len(batches),loss))
+
+            if idx % 1000 == 0 :
+                saver.save(sess, os.path.join(config.CPT_PATH,'hrnn_bot'),global_step = e)
+                print('-------------- model saved ! -------------')
                 train_ids = batches[0]
                 pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths=helper.get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,train_ids)
-                _,loss = sess.run(
-                    [train_op,cost],
-                    {input_data:pad_encoder_batch,
-                     targets:pad_decoder_batch,
-                     lr: config.learning_rate,
-                     target_sequence_length:target_lengths,
-                     source_sequence_length:source_lengths,
-                     keep_prob:1.0,
-                     hrnn_sequence_length:hrnn_lengths}
-                    )
-                
                 batch_train_logits = sess.run(
                     inference_logits,
                     {input_data: pad_encoder_batch,
                      source_sequence_length: source_lengths,
-                     target_sequence_length: target_lengths,
                      hrnn_sequence_length:hrnn_lengths,
                      keep_prob: 1.0})
-                
-                print('epoch: {}/{}, iteration: {}/{}, loss: {}'.format(e,config.epochs,idx,len(batches),loss))
                 result = [int_to_vocab[l] for s in batch_train_logits for l in s if l != 0]
                 print(result)
-            if idx % 1000 == 0 :
-                saver.save(sess, os.path.join(config.CPT_PATH,'hrnn_bot'),global_step = e)
