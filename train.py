@@ -75,7 +75,7 @@ dec_input = seq2seq.process_decoder_input(targets,vocab_to_int)
 #with tf.variable_scope("decoder"):
 training_decoder_output, inference_decoder_output = seq2seq.decoding_layer(dec_input, enc_state,
                                                                            target_sequence_length, config.max_target_sentence_length,
-                                                                           config.rnn_size,config.num_layers, target_vocab_to_int, 
+                                                                           config.rnn_size,config.decoder_num_layers, target_vocab_to_int, 
                                                                            config.target_vocab_size,batch_size_t, 
                                                                            keep_prob, config.decoding_embedding_size)
 
@@ -105,7 +105,7 @@ with tf.name_scope('optimization'):
 ## now test if it wokrs at all, try one step 
     
 train_ids = bucket_ids['bucket_1'][:10]
-pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths=helper.get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,ids)
+pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths=helper.get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,train_ids)
 
 with tf.Session() as sess:
     saver= tf.train.Saver(max_to_keep=5)

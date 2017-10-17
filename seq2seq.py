@@ -54,6 +54,110 @@ def model_inputs():
 
 #%%
 
+def _single_cell(unit_type,num_units,keep_prob,residual_connection=False, device_str=None):
+    """Create an instance of a single RNN cell."""
+    
+    if unit_type == 'lstm':
+        single_cell =  tf.contrib.rnn.LSTMCell(num_units,
+                                               initializer=tf.random_uniform_initializer(-0.1, 0.1))
+    elif unit_type == "gru":
+        single_cell = tf.contrib.rnn.GRUCell(num_units)
+    elif unit_type == "layer_norm_lstm":
+        single_cell = tf.contrib.rnn.LayerNormBasicLSTMCell(
+            num_units,layer_norm=True)
+    else:
+        raise ValueError("Unknown unit type %s!" % unit_type)
+
+    ## apply drop out 
+    single_cell = tf.contrib.rnn.DropoutWrapper(single_cell,output_keep_prob=keep_prob)
+    
+    if residual_connection:
+        single_cell = tf.contrib.rnn.ResidualWrapper(single_cell)
+    
+    return single_cell
+
+def _cell_list(unit_type, num_units, num_layers, num_residual_layers,
+               keep_prob,single_cell_fn=None):
+    """Create a list of RNN cells."""
+    
+    cell_list = []
+    if not single_cell_fn:
+        single_cell_fn = _single_cell
+    
+    for i in range(num_layers):
+        single_cell = single_cell_fn(unit_type,num_units,keep_prob,
+                                     residual_connection=(i >= num_layers - num_residual_layers))
+        cell_list.append(single_cell)
+    
+    return cell_list 
+
+def _create_rnn_cell(unit_type, num_units, num_layers, num_residual_layers, keep_prob, single_cell_fn=None):
+    """
+    Args:
+    unit_type: string representing the unit type, i.e. "lstm".
+    num_units: the depth of each unit.
+    num_layers: number of cells.
+    num_residual_layers: Number of residual layers from top to bottom. For
+      example, if `num_layers=4` and `num_residual_layers=2`, the last 2 RNN
+      cells in the returned list will be wrapped with `ResidualWrapper`
+    keep_prob:  floating point value between 0.0 and 1.0
+    """
+    cell_list = _cell_list(unit_type=unit_type,
+                         num_units=num_units,
+                         num_layers=num_layers,
+                         num_residual_layers=num_residual_layers,
+                         keep_prob=keep_prob,
+                         single_cell_fn=single_cell_fn)
+    
+    if len(cell_list) == 1:  # Single layer.
+        return cell_list[0]
+    else:  # Multi layers
+        return tf.contrib.rnn.MultiRNNCell(cell_list)
+
+#%%
+def bidirection_encoding_layer_test(rnn_inputs, rnn_size, num_layers, keep_prob, 
+                   source_sequence_length, source_vocab_size, 
+                   encoding_embedding_size):
+    shape = tf.shape(rnn_inputs)  ## get shape for input tensor 
+    s0 = shape[0]*shape[1]
+    s1 = shape[2]
+    rnn_inputs = tf.reshape(rnn_inputs,[s0,s1])
+    # Embeding
+    enc_embed_input = tf.contrib.layers.embed_sequence(rnn_inputs,source_vocab_size,encoding_embedding_size)
+    # RNN cell 
+    cell_fw = _create_rnn_cell(unit_type='lstm', num_units=rnn_size, 
+                               num_layers=num_layers, 
+                               num_residual_layers=0,
+                               keep_prob=keep_prob, 
+                               single_cell_fn=None)
+    
+    cell_bw = _create_rnn_cell(unit_type='lstm', num_units=rnn_size, 
+                               num_layers=num_layers, 
+                               num_residual_layers=0,
+                               keep_prob=keep_prob, 
+                               single_cell_fn=None)
+    
+    enc_output, bi_encoder_state = tf.nn.bidirectional_dynamic_rnn( 
+                                       cell_fw, 
+                                       cell_bw,                     
+                                       enc_embed_input,
+                                       source_sequence_length,
+                                       dtype=tf.float32)
+            
+    enc_output = tf.concat(enc_output,-1)
+    
+    encoder_state = []
+    for layer_id in range(num_layers):
+        encoder_state.append(bi_encoder_state[0][layer_id])  # forward
+        encoder_state.append(bi_encoder_state[1][layer_id])  # backward
+    
+    enc_state = tuple(encoder_state)
+    
+    hidden_states = tf.reshape(enc_output[:,-1,:],[shape[0],shape[1],rnn_size*2])
+    
+    return enc_output, enc_state,hidden_states
+
+#%%
 def process_decoder_input(target_data, target_vocab_to_int):
     """
     Preprocess target data for encoding
@@ -111,7 +215,7 @@ def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob,
 #enc_output, enc_state,hidden_states = encoding_layer(input_data, rnn_size, num_layers, keep_probability, 
 #                   source_sequence_length, source_vocab_size, 
 #                   encoding_embedding_size)
-
+#%%
 def bidirection_encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob, 
                    source_sequence_length, source_vocab_size, 
                    encoding_embedding_size):
@@ -136,7 +240,7 @@ def bidirection_encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob,
                                        source_sequence_length,
                                        dtype=tf.float32)
             
-    enc_output = tf.concat(enc_output,2)
+    enc_output = tf.concat(enc_output,-1)
     hidden_states = tf.reshape(enc_output[:,-1,:],[shape[0],shape[1],rnn_size*2])
     return enc_output, enc_state,hidden_states
 #%%
@@ -312,7 +416,7 @@ def decoding_layer_with_attention(dec_input, encoder_output,encoder_state,
             name='LuongAttention')
     
     dec_cell = tf.contrib.seq2seq.AttentionWrapper(dec_cell,attn_mech,rnn_size)
-    decoder_initial_state = dec_cell.zero_state(batch_size, tf.float32).clone(cell_state=encoder_state)
+    decoder_initial_state = dec_cell.zero_state(batch_size, tf.float32)#.clone(cell_state=encoder_state)   # as mentioned in paper massive exploration of nmt, with attention context, decoder initial usually set to zero
     
     # 4. Set up a training decoder 
     with tf.variable_scope("decode"):

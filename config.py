@@ -21,21 +21,23 @@ epochs = 5000
 # Batch Size
 batch_size = 8
 # RNN Size
-rnn_size = 600
+rnn_size = 512
 # Number of Layers
 num_layers = 2
 # Embedding Size
-encoding_embedding_size = 300
-decoding_embedding_size = 300
+encoding_embedding_size = 512
+decoding_embedding_size = 512
 # Learning Rate
-learning_rate = 0.0001
+learning_rate = 0.01
 # Dropout Keep Probability
 keep_probability = 0.8
 display_step = 1000
 source_vocab_size = 100000
 target_vocab_size = 100000
 
-hrnn_size = 600
-hrnn_num_layers = 2
+hrnn_size = 512
+hrnn_num_layers = 4
 hrnn_kepp_probability = 0.8
 max_target_sentence_length= 60
+
+decoder_num_layers = 4 

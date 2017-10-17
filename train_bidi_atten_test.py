@@ -44,7 +44,7 @@ batch_size_t = input_shape[0]
 
 ## here source sequence length might be a problem 
 
-enc_output,enc_state,hidden_states = seq2seq.bidirection_encoding_layer(input_data, config.rnn_size, config.num_layers, keep_prob, 
+enc_output,enc_state,hidden_states = seq2seq.bidirection_encoding_layer_test(input_data, config.rnn_size, config.num_layers, keep_prob, 
                    source_sequence_length, config.source_vocab_size, config.encoding_embedding_size)
 
 #%%
@@ -105,7 +105,7 @@ with tf.Session() as sess:
     
     losses = list() 
     for e in range(1,config.epochs+1):
-        #shuffle(batches)  # for debuging purpose, don't randomize batches for now 
+        shuffle(batches)  # for debuging purpose, don't randomize batches for now 
         for idx,ids in enumerate(batches,1):
             #ids = [18948, 18949, 18950, 18953, 18954, 18957, 18958, 18959]
             pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths=helper.get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,ids)   
@@ -131,7 +131,7 @@ with tf.Session() as sess:
                 saver.save(sess, os.path.join(config.CPT_PATH,'hrnn_bot'),global_step = (e-1)*len(batches)+idx)
                 #raise ValueError('something went wrong!')
                 
-            if idx % 100 == 0:
+            if idx % 20 == 0:
                 losses = losses[-20:]
                 l = sum(losses)/20
                 print('epoch: {}/{}, iteration: {}/{}, MA loss: {}'.format(e,config.epochs,idx,len(batches),l))
