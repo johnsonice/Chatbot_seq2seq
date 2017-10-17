@@ -91,6 +91,20 @@ with tf.name_scope('optimization'):
     train_op = optimizer.apply_gradients(capped_gradients)
 
 
+def train_step():
+    _,loss = sess.run(
+        [train_op,cost],
+        {input_data:pad_encoder_batch,
+         targets:pad_decoder_batch,
+         lr: config.learning_rate,
+         target_sequence_length:target_lengths,
+         source_sequence_length:source_lengths,
+         keep_prob:config.keep_probability,
+         hrnn_sequence_length:hrnn_lengths}
+        )
+    
+    return loss
+
 #%%
 
 ## now test if it wokrs at all, try one step 
