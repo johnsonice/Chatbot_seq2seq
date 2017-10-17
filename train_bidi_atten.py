@@ -126,6 +126,7 @@ with tf.Session() as sess:
                 print(ids)
                 print("target sequence length:{}, max target sequence length {}".format(target_lengths[0],config.max_target_sentence_length) )
                 pickle.dump((pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths,config.max_target_sentence_length),open('debug.p','wb'))
+                saver.save(sess, os.path.join(config.CPT_PATH,'hrnn_bot'),global_step = e)
                 raise ValueError('something went wrong!')
                 
             if idx % 100 == 0:
