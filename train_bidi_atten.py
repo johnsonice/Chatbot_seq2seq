@@ -91,20 +91,6 @@ with tf.name_scope('optimization'):
     train_op = optimizer.apply_gradients(capped_gradients)
 
 
-def train_step():
-    _,loss = sess.run(
-        [train_op,cost],
-        {input_data:pad_encoder_batch,
-         targets:pad_decoder_batch,
-         lr: config.learning_rate,
-         target_sequence_length:target_lengths,
-         source_sequence_length:source_lengths,
-         keep_prob:config.keep_probability,
-         hrnn_sequence_length:hrnn_lengths}
-        )
-    
-    return loss
-
 #%%
 
 ## now test if it wokrs at all, try one step 
@@ -116,9 +102,10 @@ with tf.Session() as sess:
     if lattest_ckpt is not None:
         saver.restore(sess, os.path.join(lattest_ckpt))
         print("Model restored.")
-
+    
+    losses = list() 
     for e in range(1,config.epochs+1):
-        shuffle(batches)  # for debuging purpose, don't randomize batches for now 
+        #shuffle(batches)  # for debuging purpose, don't randomize batches for now 
         for idx,ids in enumerate(batches,1):
             #ids = [18948, 18949, 18950, 18953, 18954, 18957, 18958, 18959]
             pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths=helper.get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,ids)   
@@ -136,18 +123,21 @@ with tf.Session() as sess:
                          keep_prob:config.keep_probability,
                          hrnn_sequence_length:hrnn_lengths}
                         )
+                losses.append(loss)
             except:
                 print(ids)
                 print("target sequence length:{}, max target sequence length {}".format(target_lengths[0],config.max_target_sentence_length) )
                 pickle.dump((pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths,config.max_target_sentence_length),open('debug.p','wb'))
-                saver.save(sess, os.path.join(config.CPT_PATH,'hrnn_bot'),global_step = e)
-                raise ValueError('something went wrong!')
+                saver.save(sess, os.path.join(config.CPT_PATH,'hrnn_bot'),global_step = (e-1)*len(batches)+idx)
+                #raise ValueError('something went wrong!')
                 
             if idx % 100 == 0:
-                print('epoch: {}/{}, iteration: {}/{}, loss: {}'.format(e,config.epochs,idx,len(batches),loss))
+                losses = losses[-20:]
+                l = sum(losses)/20
+                print('epoch: {}/{}, iteration: {}/{}, MA loss: {}'.format(e,config.epochs,idx,len(batches),l))
 
             if idx % 1000 == 0 :
-                saver.save(sess, os.path.join(config.CPT_PATH,'hrnn_bot'),global_step = e)
+                saver.save(sess, os.path.join(config.CPT_PATH,'hrnn_bot'),global_step =(e-1)*len(batches)+idx) 
                 print('-------------- model saved ! -------------')
                 train_ids = batches[0]
                 pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths=helper.get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,train_ids)
