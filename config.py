@@ -28,7 +28,7 @@ num_layers = 2
 encoding_embedding_size = 300
 decoding_embedding_size = 300
 # Learning Rate
-learning_rate = 0.0001
+learning_rate = 0.00001
 # Dropout Keep Probability
 keep_probability = 0.8
 display_step = 1000
