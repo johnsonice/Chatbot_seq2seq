@@ -60,7 +60,7 @@ for i in range(200):
     ## save trained word2 to vect model 
     if not os.path.exists("trained"):
         os.makedirs("trained")
-    file_path = os.path.join('trained','douban_'+str(i)+'.w2v')
+    file_path = os.path.join('trained','douban_'+'.w2v')
     douban_w2v.save(file_path)
     time_used = str(datetime.timedelta(seconds=time.time() - start_time))
     print('finished {} iterations, timeused {}'.format((i+1)*iteration,time_used))
