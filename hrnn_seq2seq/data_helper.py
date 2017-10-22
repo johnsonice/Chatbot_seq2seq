@@ -284,8 +284,6 @@ def make_batches_of_bucket_ids(bucket_ids,batch_size):
     
     return id_batches
         
-        
-        
 #%%
 
 def main():
