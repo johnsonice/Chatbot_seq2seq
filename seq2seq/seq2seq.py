@@ -263,7 +263,68 @@ def decoding_layer_infer(encoder_state, dec_cell, dec_embeddings, start_of_seque
                                                                   maximum_iterations=max_target_sequence_length)
 
     return inference_decoder_output
+
 #%%
+
+
+
+#%%
+def decoding_layer_infer_beam_search(encoder_state, dec_cell, dec_embeddings, start_of_sequence_id,
+                         end_of_sequence_id, max_target_sequence_length,
+                         vocab_size, output_layer, batch_size, keep_prob,beam_width=0,length_penalty_weight=0.0):
+    """
+    Create a decoding layer for inference
+    :param encoder_state: Encoder state
+    :param dec_cell: Decoder RNN Cell
+    :param dec_embeddings: Decoder embeddings
+    :param start_of_sequence_id: GO ID
+    :param end_of_sequence_id: EOS Id
+    :param max_target_sequence_length: Maximum length of target sequences
+    :param vocab_size: Size of decoder/target vocabulary
+    :param decoding_scope: TenorFlow Variable Scope for decoding
+    :param output_layer: Function to apply the output layer
+    :param batch_size: Batch size
+    :param keep_prob: Dropout keep probability
+    :return: BasicDecoderOutput containing inference logits and sample_id
+    """
+    # TODO: Implement Function
+    
+    start_tokens = tf.tile(tf.constant([start_of_sequence_id],dtype=tf.int32),[batch_size],name='start_tokens')
+    end_token = end_of_sequence_id
+    
+    if beam_width> 0:
+        inference_decoder = tf.contrib.seq2seq.BeamSearchDecoder(
+                cell = dec_cell,
+                embedding=dec_embeddings,
+                start_tokens=start_tokens,
+                end_token=end_token,
+                initial_state = encoder_state,
+                beam_width = beam_width,
+                output_layer = output_layer,
+                length_penalty_weight = length_penalty_weight
+                )
+        
+        inference_decoder_output,_,_ = tf.contrib.seq2seq.dynamic_decode(inference_decoder,
+                                                                      impute_finished=False,
+                                                                      maximum_iterations=max_target_sequence_length)
+    else:
+        inference_helper=tf.contrib.seq2seq.GreedyEmbeddingHelper(dec_embeddings,
+                                                                 start_tokens,
+                                                                 end_token)
+        inference_decoder = tf.contrib.seq2seq.BasicDecoder(dec_cell,
+                                                           inference_helper,
+                                                           encoder_state,
+                                                           output_layer)
+    
+        inference_decoder_output,_,_ = tf.contrib.seq2seq.dynamic_decode(inference_decoder,
+                                                                      impute_finished=True,
+                                                                      maximum_iterations=max_target_sequence_length)
+
+    return inference_decoder_output
+#%%
+###############################
+## put train and infer together
+###############################
 def decoding_layer(dec_input, encoder_state,
                    target_sequence_length, max_target_sequence_length,
                    rnn_size,
@@ -316,11 +377,12 @@ def decoding_layer(dec_input, encoder_state,
         
     return training_decoder_output, inference_decoder_output
 
+#%%
 def decoding_layer_with_attention(dec_input, encoder_output,encoder_state,
                    source_sequence_length,target_sequence_length, max_target_sequence_length,
                    rnn_size,
                    num_layers, target_vocab_to_int, target_vocab_size,
-                   batch_size, keep_prob, decoding_embedding_size):
+                   batch_size, keep_prob, decoding_embedding_size,beam_width=0):
     
     # 1. decoder embeding
     dec_embeddings = tf.Variable(tf.random_uniform([target_vocab_size,decoding_embedding_size]))
@@ -346,7 +408,7 @@ def decoding_layer_with_attention(dec_input, encoder_output,encoder_state,
             name='LuongAttention')
     
     dec_cell = tf.contrib.seq2seq.AttentionWrapper(dec_cell,attn_mech,rnn_size)
-    decoder_initial_state = dec_cell.zero_state(batch_size, tf.float32)#.clone(cell_state=encoder_state)   # as mentioned in paper massive exploration of nmt, with attention context, decoder initial usually set to zero
+    decoder_initial_state = dec_cell.zero_state(batch_size, tf.float32).clone(cell_state=encoder_state)   # as mentioned in paper massive exploration of nmt, with attention context, decoder initial usually set to zero
     
     # 4. Set up a training decoder 
     with tf.variable_scope("decode"):
@@ -357,10 +419,10 @@ def decoding_layer_with_attention(dec_input, encoder_output,encoder_state,
     with tf.variable_scope("decode", reuse=True):
         start_of_sequence_id = target_vocab_to_int['<GO>']
         end_of_sequence_id = target_vocab_to_int['<EOS>']
-        inference_decoder_output = decoding_layer_infer(decoder_initial_state, dec_cell, dec_embeddings, 
+        inference_decoder_output = decoding_layer_infer_beam_search(decoder_initial_state, dec_cell, dec_embeddings, 
                                                         start_of_sequence_id, end_of_sequence_id, 
                                                         max_target_sequence_length, target_vocab_size, output_layer, 
-                                                        batch_size, keep_prob)
+                                                        batch_size, keep_prob,beam_width)
         
     return training_decoder_output, inference_decoder_output
 

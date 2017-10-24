@@ -43,3 +43,5 @@ target_vocab_size = 100000
 max_target_sentence_length= 55
 
 decoder_num_layers = 4 
+
+beam_width = 0

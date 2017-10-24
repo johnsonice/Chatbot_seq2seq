@@ -40,8 +40,9 @@ input_data, targets, lr, keep_prob, target_sequence_length, max_target_sequence_
 input_shape = tf.shape(input_data)
 batch_size_t = input_shape[0]
 ## here source sequence length might be a problem 
-enc_output,enc_state = seq2seq.encoding_layer(tf.reverse(input_data,[-1]), config.rnn_size, config.num_layers, keep_prob, 
-                   source_sequence_length, config.source_vocab_size, config.encoding_embedding_size)
+with tf.variable_scope("encoder"):
+    enc_output,enc_state = seq2seq.encoding_layer(tf.reverse(input_data,[-1]), config.rnn_size, config.num_layers, keep_prob, 
+                       source_sequence_length, config.source_vocab_size, config.encoding_embedding_size)
 
 #%%
 ## build decoder 
@@ -54,12 +55,28 @@ with tf.variable_scope("decoder"):
                                                                                source_sequence_length,target_sequence_length, config.max_target_sentence_length,
                                                                                config.rnn_size,config.decoder_num_layers, target_vocab_to_int, 
                                                                                config.target_vocab_size,batch_size_t, 
-                                                                               keep_prob, config.decoding_embedding_size)
+                                                                               keep_prob, config.decoding_embedding_size,config.beam_width)
     
 #%%
+#def _compute_loss(targets, logits):
+#    """Compute optimization loss."""
+#    crossent = tf.nn.sparse_softmax_cross_entropy_with_logits(
+#        labels=targets, logits=logits)
+#    target_weights = tf.sequence_mask(
+#        target_sequence_length, max_target_sequence_length, dtype=logits.dtype)
+#
+#    loss = tf.reduce_sum(crossent * target_weights) / tf.to_float(config.batch_size)
+#    return loss
+    #%%
 # build cost and optimizer
 training_logits = tf.identity(training_decoder_output.rnn_output, name='logits')
-inference_logits = tf.identity(inference_decoder_output.sample_id, name='predictions')
+
+if config.beam_width> 0:
+    #training_logits = tf.no_op()
+    inference_logits = tf.identity(inference_decoder_output.predicted_ids, name='predictions')
+else:
+    inference_logits = tf.identity(inference_decoder_output.sample_id, name='predictions')
+    
 masks = tf.sequence_mask(target_sequence_length,max_target_sequence_length,dtype=tf.float32,name='masks')
 with tf.name_scope('optimization'):
     # Loss function
@@ -67,17 +84,19 @@ with tf.name_scope('optimization'):
             training_logits,
             targets,
             masks)
-    
-    # optimizer 
-    optimizer = tf.train.AdamOptimizer(lr)
-    gradients = optimizer.compute_gradients(cost)
-    capped_gradients = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gradients if grad is not None]
-    train_op = optimizer.apply_gradients(capped_gradients)
+        
+# optimizer 
+optimizer = tf.train.AdamOptimizer(lr)
+gradients = optimizer.compute_gradients(cost)
+capped_gradients = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gradients if grad is not None]
+train_op = optimizer.apply_gradients(capped_gradients)
 
 
 #%%
 
-## now test if it wokrs at all, try one step 
+## training steps:
+    
+helper._make_dir(config.CPT_PATH)
 
 with tf.Session() as sess:
     saver= tf.train.Saver(max_to_keep=5)
@@ -86,6 +105,8 @@ with tf.Session() as sess:
     if lattest_ckpt is not None:
         saver.restore(sess, os.path.join(lattest_ckpt))
         print("Model restored.")
+    else:
+        print("Initiate a new model.")
     
     losses = list() 
     for e in range(1,config.epochs+1):
