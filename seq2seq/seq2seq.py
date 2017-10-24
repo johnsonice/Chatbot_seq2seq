@@ -39,16 +39,16 @@ def model_inputs():
     max target sequence length, source sequence length)
     """
     
-    input_data = tf.placeholder(tf.int32,[None,None,None],name='input')
+    input_data = tf.placeholder(tf.int32,[None,None],name='input')
     targets = tf.placeholder(tf.int32,[None,None],name='targets')
     lr = tf.placeholder(tf.float32,name='learning_rate')
     keep_pro = tf.placeholder(tf.float32,name='keep_prob')
     target_sequence_length = tf.placeholder(tf.int32,(None,),name='target_sequence_length')
     max_target_sequence_length = tf.reduce_max(target_sequence_length,name='max_target_len')
     source_sequence_length = tf.placeholder(tf.int32,(None,),name='source_sequence_length')
-    hrnn_sequence_length = tf.placeholder(tf.int32,(None,),name = 'hrnn_sequence_length')
+    #hrnn_sequence_length = tf.placeholder(tf.int32,(None,),name = 'hrnn_sequence_length')
     
-    return input_data, targets, lr, keep_pro, target_sequence_length, max_target_sequence_length, source_sequence_length,hrnn_sequence_length
+    return input_data, targets, lr, keep_pro, target_sequence_length, max_target_sequence_length, source_sequence_length,#hrnn_sequence_length
 
 #input_data, targets, lr, keep_pro, target_sequence_length, max_target_sequence_length, source_sequence_length = model_inputs()
 
@@ -115,13 +115,9 @@ def _create_rnn_cell(unit_type, num_units, num_layers, num_residual_layers, keep
         return tf.contrib.rnn.MultiRNNCell(cell_list)
 
 #%%
-def bidirection_encoding_layer_test(rnn_inputs, rnn_size, num_layers, keep_prob, 
+def bidirection_encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob, 
                    source_sequence_length, source_vocab_size, 
                    encoding_embedding_size):
-    shape = tf.shape(rnn_inputs)  ## get shape for input tensor 
-    s0 = shape[0]*shape[1]
-    s1 = shape[2]
-    rnn_inputs = tf.reshape(rnn_inputs,[s0,s1])
     # Embeding
     enc_embed_input = tf.contrib.layers.embed_sequence(rnn_inputs,source_vocab_size,encoding_embedding_size)
     # RNN cell 
@@ -153,9 +149,9 @@ def bidirection_encoding_layer_test(rnn_inputs, rnn_size, num_layers, keep_prob,
     
     enc_state = tuple(encoder_state)
     
-    hidden_states = tf.reshape(enc_output[:,-1,:],[shape[0],shape[1],rnn_size*2])
+    #hidden_states = tf.reshape(enc_output[:,-1,:],[shape[0],shape[1],rnn_size*2])
     
-    return enc_output, enc_state,hidden_states
+    return enc_output, enc_state#,hidden_states
 
 #%%
 def process_decoder_input(target_data, target_vocab_to_int):
@@ -188,12 +184,6 @@ def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob,
     :param encoding_embedding_size: embedding size of source data
     :return: tuple (RNN output, RNN state)
     """
-    # TODO: Implement Function
-    shape = tf.shape(rnn_inputs)  ## get shape for input tensor 
-    s0 = shape[0]*shape[1]
-    s1 = shape[2]
-    rnn_inputs = tf.reshape(rnn_inputs,[s0,s1])
-    # Embeding
     enc_embed_input = tf.contrib.layers.embed_sequence(rnn_inputs,source_vocab_size,encoding_embedding_size)
     # RNN cell 
     def make_cell(rnn_size,keep_prob):
@@ -205,68 +195,8 @@ def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob,
     
     enc_cell = tf.contrib.rnn.MultiRNNCell([make_cell(rnn_size,keep_prob) for _ in range(num_layers)])
     enc_output,enc_state = tf.nn.dynamic_rnn(enc_cell,enc_embed_input,sequence_length=source_sequence_length,dtype=tf.float32)
-    
-    # need to double check this, enc_output[:,-1,:] is supposed to get the hidden state for the last time step 
-    hidden_states = tf.reshape(enc_output[:,-1,:],[shape[0],shape[1],rnn_size])
-    
-    return enc_output, enc_state,hidden_states
 
-
-#enc_output, enc_state,hidden_states = encoding_layer(input_data, rnn_size, num_layers, keep_probability, 
-#                   source_sequence_length, source_vocab_size, 
-#                   encoding_embedding_size)
-#%%
-def bidirection_encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob, 
-                   source_sequence_length, source_vocab_size, 
-                   encoding_embedding_size):
-    shape = tf.shape(rnn_inputs)  ## get shape for input tensor 
-    s0 = shape[0]*shape[1]
-    s1 = shape[2]
-    rnn_inputs = tf.reshape(rnn_inputs,[s0,s1])
-    # Embeding
-    enc_embed_input = tf.contrib.layers.embed_sequence(rnn_inputs,source_vocab_size,encoding_embedding_size)
-    # RNN cell 
-    
-    for layer in range(num_layers):
-        with tf.variable_scope('encoder_{}'.format(layer)):
-            cell_fw = tf.contrib.rnn.LSTMCell(rnn_size,initializer=tf.random_uniform_initializer(-0.1, 0.1))
-            cell_fw = tf.contrib.rnn.DropoutWrapper(cell_fw,input_keep_prob = keep_prob)
-            cell_bw = tf.contrib.rnn.LSTMCell(rnn_size,initializer=tf.random_uniform_initializer(-0.1, 0.1))
-            cell_bw = tf.contrib.rnn.DropoutWrapper(cell_bw,input_keep_prob = keep_prob)
-            enc_output, enc_state = tf.nn.bidirectional_dynamic_rnn( 
-                                       cell_fw, 
-                                       cell_bw,                     
-                                       enc_embed_input,
-                                       source_sequence_length,
-                                       dtype=tf.float32)
-            
-    enc_output = tf.concat(enc_output,-1)
-    hidden_states = tf.reshape(enc_output[:,-1,:],[shape[0],shape[1],rnn_size*2])
-    return enc_output, enc_state,hidden_states
-#%%
-
-def hierarchical_encoding_layer(hrnn_inputs,hrnn_size,hrnn_num_layers,hrnn_keep_prob,hrnn_source_sequence_length):
-    """
-    Use the hidden state of first seq2seq as input and do another hrnn encoding 
-    """
-    def make_cell(hrnn_size,hrnn_keep_prob):
-        enc_cell = tf.contrib.rnn.LSTMCell(hrnn_size,
-                                          initializer=tf.random_uniform_initializer(-0.1, 0.1))
-        drop_cell = tf.contrib.rnn.DropoutWrapper(enc_cell,output_keep_prob=hrnn_keep_prob)
-        
-        return drop_cell
-    
-    #enc_cell = make_cell(hrnn_size,hrnn_keep_prob)
-    
-    enc_cell = tf.contrib.rnn.MultiRNNCell([make_cell(hrnn_size,hrnn_keep_prob) for _ in range(hrnn_num_layers)])
-    
-    hrnn_enc_output,hrnn_enc_state = tf.nn.dynamic_rnn(enc_cell,hrnn_inputs,sequence_length=hrnn_source_sequence_length,dtype=tf.float32)
-    
-    return hrnn_enc_output,hrnn_enc_state
-
-#with tf.variable_scope("h-decode"):
-#    enc_output, enc_state = hierarchical_encoding_layer(hidden_states, rnn_size, num_layers, keep_probability, 
-#                       source_sequence_length)
+    return enc_output, enc_state
 
 #%%
 def decoding_layer_train(encoder_state, dec_cell, dec_embed_input, 

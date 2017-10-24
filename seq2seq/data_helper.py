@@ -24,51 +24,29 @@ from nltk.tokenize import  word_tokenize #,sent_tokenize
 
 ## get all sentences with sentence id 
 def get_lines():
-    id2line = {}
+    #id2line = {}
     file_path = os.path.join(config.DATA_PATH, config.LINE_FILE)
     with open(file_path, 'r',encoding='utf-8',errors='replace') as f:
-        lines = f.readlines()
-        for line in lines:
-            parts = line.split(' +++$+++ ')
-            if len(parts) == 5:
-                if parts[4][-1] == '\n':
-                    parts[4] = parts[4][:-1]
-                id2line[parts[0]] = parts[4]
-    return id2line
+        lines = f.read().split('\nE')
+        convs = [l.split('\nM') for l in lines]
+        convs = [[s.strip().split('/') for s in conv if s != '' and s!= 'E'] for conv in convs]
+        #convs = [[s.split('/') for s in conv]]
+    return convs
 
-#id2line = get_lines()
+#convs = get_lines()
 
 #%%
-
-## get all conversion with sentence id in a list
-def get_convos():
-    """ Get conversations from the raw data """
-    file_path = os.path.join(config.DATA_PATH, config.CONVO_FILE)
-    convos = []
-    with open(file_path, 'r') as f:
-        for line in f.readlines():
-            parts = line.split(' +++$+++ ')
-            if len(parts) == 4:
-                convo = []
-                for line in parts[3][1:-2].split(', '):
-                    convo.append(line[1:-1])
-                convos.append(convo)
-
-    return convos
-
-convos = get_convos()
-#%%
-def context_answers(convos,id2line):
+def context_answers(convs):
     context,answers = [],[]
-    for convo in convos:
-        for index,line in enumerate(convo[:-1]):
-            context.append([id2line[line] for line in convo[:index+1]])
-            answers.append(id2line[convo[index+1]])
+    for conv in convs:
+        for index,line in enumerate(conv[:-1]):
+            context.append(conv[index])
+            answers.append(conv[index+1])
         
     assert len(context) == len(answers)
     return context,answers
 
-#context,answers =  context_answers(convos,id2line)
+#context,answers =  context_answers(convs)
 
 #%%
 def _make_dir(path):
@@ -107,9 +85,12 @@ def train_test_split(context,answers):
     pickle.dump((train_enc, train_dec, test_enc,test_dec),open(save_file_path,'wb'))
     
     return train_enc, train_dec, test_enc,test_dec
-    
+
 #_ = train_test_split(context,answers)
 #%%
+
+## for xiaohuangji data, it has already been tokenized 
+## do do not need to run tokenizer
 def _basic_tokenizer(line,normalize_digits=True):
     """
     A basic tokenizer to tokenize text into tokens
@@ -136,6 +117,9 @@ def _basic_tokenizer(line,normalize_digits=True):
     return words 
 
 #%%
+    
+## same thing, for xiaohuangji data, do not need to run this, 
+## already tokenized
 def save_tokenized_data(text_pickle_path):
     train_enc, train_dec, test_enc,test_dec = pickle.load(open(text_pickle_path,'rb'))
     train_enc_tokens, train_dec_tokens, test_enc_tokens,test_dec_tokens = [],[],[],[]
@@ -201,7 +185,7 @@ def build_vocab(pickle_file_path,CODES):
     
     return vocab_to_int,int_to_vocab
 
-#vocab_to_int,int_to_vocab = build_vocab(os.path.join(config.PROCESSED_PATH,'processed_tokens.p'),CODES)
+#vocab_to_int,int_to_vocab = build_vocab(os.path.join(config.PROCESSED_PATH,'processed_text.p'),CODES)
 
 #%%
     
@@ -214,19 +198,41 @@ def load_training_data(train_token_path):
     return train_enc_tokens, train_dec_tokens, test_enc_tokens,test_dec_tokens
 
 #vocab_path = os.path.join(config.PROCESSED_PATH,'vocab.p')
-#train_token_path = os.path.join(config.PROCESSED_PATH,'processed_tokens.p')
+#train_token_path = os.path.join(config.PROCESSED_PATH,'processed_text.p')
 #vocab_to_int,int_to_vocab = load_vocab(vocab_path)
 #train_enc_tokens, train_dec_tokens, test_enc_tokens,test_dec_tokens = load_training_data(train_token_path)
+
+#%%
+### put training data into buckets 
+def bucket_training_data(train_enc_tokens,train_dec_tokens):
+    buckets = range(len(config.BUCKETS)) 
+    data_id_buckets = {i:list() for i in buckets}
+    for idx in range(len(train_enc_tokens)):
+        for bucket_id, (encode_max_size, decode_max_size) in enumerate(config.BUCKETS):
+            if len(train_enc_tokens[idx]) <= encode_max_size and len(train_dec_tokens[idx]) <= decode_max_size:
+                data_id_buckets[bucket_id].append(idx)
+    return data_id_buckets   
+
+def make_batches_of_bucket_ids(data_id_buckets,batch_size):
+    id_batches = list() 
+    for i,v in data_id_buckets.items():
+        for batch_i in range(len(v)//batch_size):
+            start_i = batch_i * batch_size
+            ## slice the right amount for the batch 
+            id_batches.append(v[start_i:start_i+batch_size])
+    
+    return id_batches
 
 #%%
 def sentence2id(line,vocab_to_int):
     return [vocab_to_int.get(token,vocab_to_int['<UNK>']) for token in line] + [vocab_to_int['<EOS>']]
 
-
 #test = ['i','am','a','research','assistant']
 #ids = sentence2id(test,vocab_to_int)
 
 #%%
+## pad_context_batch is designed for hrnn not for absic sequence to sequence 
+## for basic sequence to sequence, just use pad_answer_batch
 def pad_context_batch(batch, vocab_to_int):
     """Pad sentences with <PAD> so that each sentence of a batch has the same length"""
     max_sentence = max([len(s) for conv in batch for s in conv])
@@ -243,7 +249,22 @@ def pad_answer_batch(batch, vocab_to_int):
 
     return pad_batch
 
-def get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,ids):
+def get_batch_seq2seq(train_enc_tokens, train_dec_tokens,vocab_to_int,ids):
+    encoder_input = [train_enc_tokens[i] for i in ids]
+    pad_encoder_input = np.array(pad_answer_batch(encoder_input,vocab_to_int))
+    decoder_input = [train_dec_tokens[i] for i in ids]
+    pad_decoder_input = np.array(pad_answer_batch(decoder_input,vocab_to_int))
+    
+    pad_encoder_shape = pad_encoder_input.shape
+    pad_decoder_shape = pad_decoder_input.shape
+    
+    source_sequence_length = [pad_encoder_shape[1]]*pad_encoder_shape[0]
+    target_sequence_length = [pad_decoder_shape[1]]*pad_decoder_shape[0]
+    
+    return pad_encoder_input, pad_decoder_input, source_sequence_length,target_sequence_length
+    
+    
+def get_batch_hrnn(train_enc_tokens, train_dec_tokens,vocab_to_int,ids):
     encoder_input = [train_enc_tokens[i] for i in ids]
     pad_encoder_input = np.array(pad_context_batch(encoder_input,vocab_to_int))
     pad_encoder_shape = pad_encoder_input.shape
@@ -257,44 +278,21 @@ def get_batch(train_enc_tokens, train_dec_tokens,vocab_to_int,ids):
     
     return pad_encoder_input, pad_decoder_input, source_sequence_length,target_sequence_length,hrnn_sequence_length
     
-#encoder_input,decoder_input =  get_batch(train_enc_tokens, train_dec_tokens,batch_size = 1,context_length=2)
+
+#ids = [0,1,2,3]
+#pad_encoder_input, pad_decoder_input, source_sequence_length,target_sequence_length =  get_batch_seq2seq(train_enc_tokens, train_dec_tokens,vocab_to_int,ids)
 #pad_encoder_batch = pad_context_batch(encoder_input,vocab_to_int)
 #pad_decoder_batch = pad_answer_batch(decoder_input,vocab_to_int)
 
-#%%
-### put training data into buckets 
-def bucket_training_data(train_enc_tokens,MAX_CONV_LENGTH):
-    buckets = range(1,MAX_CONV_LENGTH+1) 
-    bucket_ids = {'bucket_'+str(i):list() for i in buckets}
-    for i in range(len(train_enc_tokens)):
-        conv_length = len(train_enc_tokens[i])
-        if conv_length < MAX_CONV_LENGTH:
-            bucket_id= 'bucket_' +  str(conv_length)
-            bucket_ids[bucket_id].append(i)
 
-    return bucket_ids   
-
-def make_batches_of_bucket_ids(bucket_ids,batch_size):
-    id_batches = list() 
-    for i,v in bucket_ids.items():
-        for batch_i in range(len(v)//batch_size):
-            start_i = batch_i * batch_size
-            ## slice the right amount for the batch 
-            id_batches.append(v[start_i:start_i+batch_size])
-    
-    return id_batches
-        
-        
-        
 #%%
 
 def main():
     ## process data and build vocabulary
-    id2line = get_lines()
-    context,answers =  context_answers(convos,id2line)
-    _ = train_test_split(context,answers)                                            ## generage train and test data sets, save them in pickle file prcessed_text.p
-    _ = save_tokenized_data(os.path.join(config.PROCESSED_PATH,'processed_text.p'))  ## generate tokenized datasets 
-    _ = build_vocab(os.path.join(config.PROCESSED_PATH,'processed_tokens.p'),CODES)  ## take processed tokens, to generate dictionary
+    convs = get_lines()
+    context,answers =  context_answers(convs)
+    _ = train_test_split(context,answers)
+    _ = build_vocab(os.path.join(config.PROCESSED_PATH,'processed_text.p'),CODES)  ## take processed tokens, to generate dictionary
 
 
 if __name__ == '__main__':
