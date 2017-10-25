@@ -55,15 +55,7 @@ with tf.variable_scope("decoder"):
                                                                                keep_prob, config.decoding_embedding_size,config.beam_width)
     
 #%%
-#def _compute_loss(targets, logits):
-#    """Compute optimization loss."""
-#    crossent = tf.nn.sparse_softmax_cross_entropy_with_logits(
-#        labels=targets, logits=logits)
-#    target_weights = tf.sequence_mask(
-#        target_sequence_length, max_target_sequence_length, dtype=logits.dtype)
-#
-#    loss = tf.reduce_sum(crossent * target_weights) / tf.to_float(config.batch_size)
-#    return loss
+
     #%%
 # build cost and optimizer
 training_logits = tf.identity(training_decoder_output.rnn_output, name='logits')
@@ -75,19 +67,16 @@ if config.beam_width> 0:
 else:
     inference_logits = tf.identity(inference_decoder_output.sample_id, name='predictions')
     
-masks = tf.sequence_mask(target_sequence_length,max_target_sequence_length,dtype=tf.float32,name='masks')
+
 with tf.name_scope('optimization'):
-    # Loss function
-    cost = tf.contrib.seq2seq.sequence_loss(
-            training_logits,
-            targets,
-            masks)
-        
-# optimizer 
-optimizer = tf.train.AdamOptimizer(lr)
-gradients = optimizer.compute_gradients(cost)
-capped_gradients = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gradients if grad is not None]
-train_op = optimizer.apply_gradients(capped_gradients)
+    # Loss function    
+    cost = seq2seq._compute_loss(targets,training_logits,target_sequence_length,max_target_sequence_length)
+
+    # optimizer 
+    optimizer = tf.train.AdamOptimizer(lr)
+    gradients = optimizer.compute_gradients(cost)
+    capped_gradients = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gradients if grad is not None]
+    train_op = optimizer.apply_gradients(capped_gradients)
 
 
 #%%

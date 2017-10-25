@@ -244,41 +244,26 @@ def decoding_layer_train(encoder_output,encoder_state, dec_cell, dec_embed_input
     
     return training_decoder_output
 
+
 #%%
-
-def decoding_layer_infer(encoder_state, dec_cell, dec_embeddings, start_of_sequence_id,
-                         end_of_sequence_id, max_target_sequence_length,
-                         vocab_size, output_layer, batch_size, keep_prob):
-    """
-    Create a decoding layer for inference
-    :param encoder_state: Encoder state
-    :param dec_cell: Decoder RNN Cell
-    :param dec_embeddings: Decoder embeddings
-    :param start_of_sequence_id: GO ID
-    :param end_of_sequence_id: EOS Id
-    :param max_target_sequence_length: Maximum length of target sequences
-    :param vocab_size: Size of decoder/target vocabulary
-    :param decoding_scope: TenorFlow Variable Scope for decoding
-    :param output_layer: Function to apply the output layer
-    :param batch_size: Batch size
-    :param keep_prob: Dropout keep probability
-    :return: BasicDecoderOutput containing inference logits and sample_id
-    """
-    # TODO: Implement Function
     
-    start_tokens = tf.tile(tf.constant([start_of_sequence_id],dtype=tf.int32),[batch_size],name='start_tokens')
-    inference_helper=tf.contrib.seq2seq.GreedyEmbeddingHelper(dec_embeddings,
-                                                             start_tokens,
-                                                             end_of_sequence_id)
-    inference_decoder = tf.contrib.seq2seq.BasicDecoder(dec_cell,
-                                                       inference_helper,
-                                                       encoder_state,
-                                                       output_layer)
-    inference_decoder_output,_,_ = tf.contrib.seq2seq.dynamic_decode(inference_decoder,
-                                                                  impute_finished=True,
-                                                                  maximum_iterations=max_target_sequence_length)
-
-    return inference_decoder_output
+def _compute_loss(targets, logits,target_sequence_length,max_target_sequence_length,high_level=True):
+    """Compute optimization loss."""
+    ## we can eight use a highleve seq2seq.sequence_loss api or 
+    ## we can use more low level softmax_cross_entropy_with_logits api 
+    
+    target_weights = tf.sequence_mask(target_sequence_length, max_target_sequence_length, dtype=logits.dtype)
+    
+    if high_level:
+        loss = tf.contrib.seq2seq.sequence_loss(
+            logits,
+            targets,
+            target_weights)
+    else:
+        crossent = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=targets, logits=logits)
+        loss = tf.reduce_sum(crossent * target_weights) / tf.to_float(config.batch_size)
+    
+    return loss
 
 #%%
 def decoding_layer_infer_beam_search(encoder_output,encoder_state, dec_cell, dec_embeddings, start_of_sequence_id,
@@ -310,7 +295,7 @@ def decoding_layer_infer_beam_search(encoder_output,encoder_state, dec_cell, dec
         encoder_state_beam =  tf.contrib.seq2seq.tile_batch(encoder_state, multiplier=beam_width)
         batch_size_beam = tf.shape(encoder_output_beam)[0]
         
-            ## attention mechanish
+        ## attention mechanish
         attn_mech = tf.contrib.seq2seq.LuongAttention(
                 config.attention_size,
                 encoder_output_beam,
@@ -365,8 +350,6 @@ def decoding_layer_infer_beam_search(encoder_output,encoder_state, dec_cell, dec
 ## put train and infer together
 ###############################
 
-
-#%%
 def decoding_layer_with_attention(dec_input, encoder_output,encoder_state,
                    source_sequence_length,target_sequence_length, max_target_sequence_length,
                    rnn_size,
@@ -425,61 +408,41 @@ def decoding_layer_with_attention(dec_input, encoder_output,encoder_state,
 
     
     
-    
+
 #%%
     
-
-#def decoding_layer(dec_input, encoder_state,
-#                   target_sequence_length, max_target_sequence_length,
-#                   rnn_size,
-#                   num_layers, target_vocab_to_int, target_vocab_size,
-#                   batch_size, keep_prob, decoding_embedding_size):
+#
+#def decoding_layer_infer(encoder_state, dec_cell, dec_embeddings, start_of_sequence_id,
+#                         end_of_sequence_id, max_target_sequence_length,
+#                         vocab_size, output_layer, batch_size, keep_prob):
 #    """
-#    Create decoding layer
-#    :param dec_input: Decoder input
+#    Create a decoding layer for inference
 #    :param encoder_state: Encoder state
-#    :param target_sequence_length: The lengths of each sequence in the target batch
+#    :param dec_cell: Decoder RNN Cell
+#    :param dec_embeddings: Decoder embeddings
+#    :param start_of_sequence_id: GO ID
+#    :param end_of_sequence_id: EOS Id
 #    :param max_target_sequence_length: Maximum length of target sequences
-#    :param rnn_size: RNN Size
-#    :param num_layers: Number of layers
-#    :param target_vocab_to_int: Dictionary to go from the target words to an id
-#    :param target_vocab_size: Size of target vocabulary
-#    :param batch_size: The size of the batch
+#    :param vocab_size: Size of decoder/target vocabulary
+#    :param decoding_scope: TenorFlow Variable Scope for decoding
+#    :param output_layer: Function to apply the output layer
+#    :param batch_size: Batch size
 #    :param keep_prob: Dropout keep probability
-#    :return: Tuple of (Training BasicDecoderOutput, Inference BasicDecoderOutput)
+#    :return: BasicDecoderOutput containing inference logits and sample_id
 #    """
-#    # 1. decoder embeding
-#    dec_embeddings = tf.Variable(tf.random_uniform([target_vocab_size,decoding_embedding_size]))
-#    dec_embed_input = tf.nn.embedding_lookup(dec_embeddings,dec_input)
+#    # TODO: Implement Function
 #    
-#    # decoder cell 
-#    def make_cell(rnn_size,keep_prob):
-#        enc_cell = tf.contrib.rnn.LSTMCell(rnn_size,
-#                                          initializer=tf.random_uniform_initializer(-0.1, 0.1))
-#        drop_cell = tf.contrib.rnn.DropoutWrapper(enc_cell,output_keep_prob=keep_prob)
-#        return drop_cell
+#    start_tokens = tf.tile(tf.constant([start_of_sequence_id],dtype=tf.int32),[batch_size],name='start_tokens')
+#    inference_helper=tf.contrib.seq2seq.GreedyEmbeddingHelper(dec_embeddings,
+#                                                             start_tokens,
+#                                                             end_of_sequence_id)
+#    inference_decoder = tf.contrib.seq2seq.BasicDecoder(dec_cell,
+#                                                       inference_helper,
+#                                                       encoder_state,
+#                                                       output_layer)
+#    inference_decoder_output,_,_ = tf.contrib.seq2seq.dynamic_decode(inference_decoder,
+#                                                                  impute_finished=True,
+#                                                                  maximum_iterations=max_target_sequence_length)
+#
+#    return inference_decoder_output
 #    
-#    dec_cell = tf.contrib.rnn.MultiRNNCell([make_cell(rnn_size,keep_prob) for _ in range(num_layers)])
-#    
-#    # 3. output layer to translate the decoder's output at each time 
-#    output_layer = Dense(target_vocab_size,
-#                         kernel_initializer=tf.truncated_normal_initializer(mean = 0.0, stddev=0.1))
-#    
-#    # 4. Set up a training decoder 
-#    with tf.variable_scope("decode"):
-#        training_decoder_output = decoding_layer_train(encoder_state, dec_cell, 
-#                                                       dec_embed_input, target_sequence_length, 
-#                                                       max_target_sequence_length, output_layer, 
-#                                                       keep_prob) 
-#    with tf.variable_scope("decode", reuse=True):
-#        start_of_sequence_id = target_vocab_to_int['<GO>']
-#        end_of_sequence_id = target_vocab_to_int['<EOS>']
-#        inference_decoder_output = decoding_layer_infer(encoder_state, dec_cell, dec_embeddings, 
-#                                                        start_of_sequence_id, end_of_sequence_id, 
-#                                                        max_target_sequence_length, target_vocab_size, output_layer, 
-#                                                        batch_size, keep_prob)
-#        
-#    return training_decoder_output, inference_decoder_output
-#    
-    
-    
