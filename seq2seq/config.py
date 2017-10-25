@@ -22,16 +22,19 @@ max_conv_length = 6
 # Number of Epochs
 epochs = 5000
 # Batch Size
-batch_size = 64
+batch_size = 32
 # RNN Size
 rnn_size = 512
+attention_size = 512
 # Number of Layers
 num_layers = 4
+decoder_num_layers = 4 
 # Embedding Size
 encoding_embedding_size = 300
 decoding_embedding_size = 300
 # Learning Rate
 learning_rate = 0.001
+
 
 # Dropout Keep Probability
 keep_probability = 0.8
@@ -42,6 +45,4 @@ target_vocab_size = 100000
 
 max_target_sentence_length= 55
 
-decoder_num_layers = 4 
-
-beam_width = 0
+beam_width = 10

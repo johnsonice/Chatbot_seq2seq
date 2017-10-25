@@ -13,12 +13,9 @@ import config
 import tensorflow as tf 
 #import numpy as np 
 import seq2seq
-import pickle
+#import pickle
 #from tensorflow.python.layers.core import Dense
-
-
 #%%
-
 ## first, load and pad data 
 ## load all data and vocabulary
 vocab_path = os.path.join(config.PROCESSED_PATH,'vocab.p')
@@ -74,6 +71,7 @@ training_logits = tf.identity(training_decoder_output.rnn_output, name='logits')
 if config.beam_width> 0:
     #training_logits = tf.no_op()
     inference_logits = tf.identity(inference_decoder_output.predicted_ids, name='predictions')
+    scores = tf.identity(inference_decoder_output.beam_search_decoder_output.scores, name='predictions')
 else:
     inference_logits = tf.identity(inference_decoder_output.sample_id, name='predictions')
     
@@ -128,13 +126,7 @@ with tf.Session() as sess:
                      keep_prob:config.keep_probability}
                     )
             losses.append(loss)
-#            except:
-#                print(ids)
-#                print("target sequence length:{}, max target sequence length {}".format(target_lengths[0],config.max_target_sentence_length) )
-#                pickle.dump((pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,config.max_target_sentence_length),open('debug.p','wb'))
-#                #saver.save(sess, os.path.join(config.CPT_PATH,'hrnn_bot'),global_step = (e-1)*len(batches)+idx)
-#                #raise ValueError('something went wrong!')
-#                
+
             if idx % config.display_step == 0:
                 losses = losses[-20:]
                 l = sum(losses)/20
@@ -150,5 +142,11 @@ with tf.Session() as sess:
                     {input_data: pad_encoder_batch,
                      source_sequence_length: source_lengths,
                      keep_prob: 1.0})
-                result = [int_to_vocab[l] for s in batch_train_logits for l in s if l != 0]
-                print(result)
+                if config.beam_width>0:
+                    for i in range(config.beam_width):
+                        first_res = batch_train_logits[0,:,i]
+                        result = [int_to_vocab[s] for s in first_res if s != -1]
+                        print(result)
+                else:
+                    result = [int_to_vocab[l] for s in batch_train_logits for l in s if l != 0]
+                    print(result)
