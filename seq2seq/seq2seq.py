@@ -33,28 +33,7 @@ import config
 
 
 #%%
-def model_inputs():
-    """
-    Create TF Placeholders for input, targets, learning rate, and lengths of source and target sequences.
-    :return: Tuple (input, targets, learning rate, keep probability, target sequence length,
-    max target sequence length, source sequence length)
-    """
-    
-    input_data = tf.placeholder(tf.int32,[None,None],name='input')
-    targets = tf.placeholder(tf.int32,[None,None],name='targets')
-    lr = tf.placeholder(tf.float32,name='learning_rate')
-    keep_pro = tf.placeholder(tf.float32,name='keep_prob')
-    target_sequence_length = tf.placeholder(tf.int32,(None,),name='target_sequence_length')
-    max_target_sequence_length = tf.reduce_max(target_sequence_length,name='max_target_len')
-    source_sequence_length = tf.placeholder(tf.int32,(None,),name='source_sequence_length')
-    #hrnn_sequence_length = tf.placeholder(tf.int32,(None,),name = 'hrnn_sequence_length')
-    
-    return input_data, targets, lr, keep_pro, target_sequence_length, max_target_sequence_length, source_sequence_length,#hrnn_sequence_length
-
-#input_data, targets, lr, keep_pro, target_sequence_length, max_target_sequence_length, source_sequence_length = model_inputs()
-
-#%%
-
+## some utilities functions first
 def _single_cell(unit_type,num_units,keep_prob,residual_connection=False, device_str=None):
     """Create an instance of a single RNN cell."""
     
@@ -114,6 +93,69 @@ def _create_rnn_cell(unit_type, num_units, num_layers, num_residual_layers, keep
         return cell_list[0]
     else:  # Multi layers
         return tf.contrib.rnn.MultiRNNCell(cell_list)
+
+    
+def _compute_loss(targets, logits,target_sequence_length,max_target_sequence_length,high_level=True):
+    """Compute optimization loss."""
+    ## we can eight use a highleve seq2seq.sequence_loss api or 
+    ## we can use more low level softmax_cross_entropy_with_logits api 
+    
+    target_weights = tf.sequence_mask(target_sequence_length, max_target_sequence_length, dtype=logits.dtype)
+    
+    if high_level:
+        loss = tf.contrib.seq2seq.sequence_loss(
+            logits,
+            targets,
+            target_weights)
+    else:
+        crossent = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=targets, logits=logits)
+        loss = tf.reduce_sum(crossent * target_weights) / tf.to_float(config.batch_size)
+    
+    return loss
+
+def _get_learning_rate_decay(global_step, learning_rate, config):
+    """Get learning rate decay."""
+    if (config.learning_rate_decay_scheme and config.learning_rate_decay_scheme == "luong"):
+          start_decay_step = int(config.num_train_steps / 2)
+          decay_steps = int(config.num_train_steps / 10)  # decay 5 times
+          decay_factor = 0.5
+    else:
+          start_decay_step = config.start_decay_step
+          decay_steps = config.decay_steps
+          decay_factor = config.decay_factor
+    print("  decay_scheme=%s, start_decay_step=%d, decay_steps %d,decay_factor %g" %
+          (config.learning_rate_decay_scheme, config.start_decay_step, config.decay_steps, config.decay_factor))
+    
+    return tf.cond(
+            global_step < start_decay_step,
+            lambda: learning_rate,
+            lambda: tf.train.exponential_decay(
+                            learning_rate,
+                            (global_step - start_decay_step),
+                            decay_steps, decay_factor, staircase=True),
+                            name="learning_rate_decay_cond")
+
+
+#%%
+def model_inputs():
+    """
+    Create TF Placeholders for input, targets, learning rate, and lengths of source and target sequences.
+    :return: Tuple (input, targets, learning rate, keep probability, target sequence length,
+    max target sequence length, source sequence length)
+    """
+    
+    input_data = tf.placeholder(tf.int32,[None,None],name='input')
+    targets = tf.placeholder(tf.int32,[None,None],name='targets')
+    lr = tf.placeholder(tf.float32,name='learning_rate')
+    keep_pro = tf.placeholder(tf.float32,name='keep_prob')
+    target_sequence_length = tf.placeholder(tf.int32,(None,),name='target_sequence_length')
+    max_target_sequence_length = tf.reduce_max(target_sequence_length,name='max_target_len')
+    source_sequence_length = tf.placeholder(tf.int32,(None,),name='source_sequence_length')
+    #hrnn_sequence_length = tf.placeholder(tf.int32,(None,),name = 'hrnn_sequence_length')
+    
+    return input_data, targets, lr, keep_pro, target_sequence_length, max_target_sequence_length, source_sequence_length,#hrnn_sequence_length
+
+#input_data, targets, lr, keep_pro, target_sequence_length, max_target_sequence_length, source_sequence_length = model_inputs()
 
 #%%
 def bidirection_encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob, 
@@ -246,25 +288,9 @@ def decoding_layer_train(encoder_output,encoder_state, dec_cell, dec_embed_input
 
 
 #%%
-    
-def _compute_loss(targets, logits,target_sequence_length,max_target_sequence_length,high_level=True):
-    """Compute optimization loss."""
-    ## we can eight use a highleve seq2seq.sequence_loss api or 
-    ## we can use more low level softmax_cross_entropy_with_logits api 
-    
-    target_weights = tf.sequence_mask(target_sequence_length, max_target_sequence_length, dtype=logits.dtype)
-    
-    if high_level:
-        loss = tf.contrib.seq2seq.sequence_loss(
-            logits,
-            targets,
-            target_weights)
-    else:
-        crossent = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=targets, logits=logits)
-        loss = tf.reduce_sum(crossent * target_weights) / tf.to_float(config.batch_size)
-    
-    return loss
 
+
+#%%
 #%%
 def decoding_layer_infer_beam_search(encoder_output,encoder_state, dec_cell, dec_embeddings, start_of_sequence_id,
                          end_of_sequence_id,source_sequence_length,max_target_sequence_length,
