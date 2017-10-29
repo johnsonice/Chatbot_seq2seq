@@ -56,7 +56,6 @@ with tf.variable_scope("decoder"):
     
 #%%
 
-    #%%
 # build cost and optimizer
 training_logits = tf.identity(training_decoder_output.rnn_output, name='logits')
 
@@ -97,7 +96,7 @@ with tf.Session() as sess:
     
     losses = list() 
     for e in range(1,config.epochs+1):
-        #shuffle(batches)  # for debuging purpose, don't randomize batches for now 
+        shuffle(batches)  # for debuging purpose, don't randomize batches for now 
         for idx,ids in enumerate(batches,1):
             #ids = [18948, 18949, 18950, 18953, 18954, 18957, 18958, 18959]
             pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths=helper.get_batch_seq2seq(train_enc_tokens, train_dec_tokens,vocab_to_int,ids)   

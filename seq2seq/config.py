@@ -15,7 +15,7 @@ CPT_PATH = 'checkpoints'
 
 BUCKETS=[(10, 8), (14, 12), (19, 16), (26, 23), (43, 40),(50,50)]
 
-testset_size = 0.01
+testset_size = 0.001
 max_conv_length = 6
 
 ## model_inputs 
