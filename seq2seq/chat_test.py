@@ -11,7 +11,7 @@ import data_helper as helper
 import config
 import os 
 import numpy as np
-from nltk.tokenize import  word_tokenize 
+#from nltk.tokenize import  word_tokenize 
 
 
 #%%
