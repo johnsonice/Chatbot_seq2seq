@@ -46,7 +46,7 @@ decoding_embedding_size = 300
 # Dropout Keep Probability
 keep_probability = 0.8
 display_step = 100
-save_step = 5000
+save_step = 1000
 source_vocab_size = 100000
 target_vocab_size = 100000
 
