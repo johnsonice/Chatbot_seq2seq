@@ -66,23 +66,32 @@ if config.beam_width> 0:
 else:
     inference_logits = tf.identity(inference_decoder_output.sample_id, name='predictions')
     
+global_step = tf.Variable(0, trainable=False)
+learning_rate = seq2seq._get_learning_rate_decay(global_step, config)
 
 with tf.name_scope('optimization'):
     # Loss function    
     cost = seq2seq._compute_loss(targets,training_logits,target_sequence_length,max_target_sequence_length)
 
     # optimizer 
-    optimizer = tf.train.AdamOptimizer(lr)
+    optimizer = tf.train.AdamOptimizer(learning_rate)
     gradients = optimizer.compute_gradients(cost)
     capped_gradients = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gradients if grad is not None]
-    train_op = optimizer.apply_gradients(capped_gradients)
+    train_op = optimizer.apply_gradients(capped_gradients,global_step=global_step)
 
 
+## summaries for tensorboard 
+tf.summary.scalar("learning_rate", learning_rate)
+tf.summary.scalar("train_loss", cost)
+train_summary = tf.summary.merge_all()
+    
+    
 #%%
 
 ## training steps:
     
 helper._make_dir(config.CPT_PATH)
+writer = tf.summary.FileWriter(config.SUMMARY_PATH)
 
 with tf.Session() as sess:
     saver= tf.train.Saver(max_to_keep=5)
@@ -104,24 +113,26 @@ with tf.Session() as sess:
             #pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths,max_length = pickle.load(open('debug.p','rb'))
             if target_lengths[0]>config.max_target_sentence_length: continue
 #            try:
-            _,loss = sess.run(
-                    [train_op,cost],
+            _,loss,steps,learn_r,summary = sess.run(
+                    [train_op,cost,global_step,learning_rate,train_summary],
                     {input_data:pad_encoder_batch,
                      targets:pad_decoder_batch,
-                     lr: config.learning_rate,
+                     lr: config.learning_rate,      ## this part is actually not used
                      target_sequence_length:target_lengths,
                      source_sequence_length:source_lengths,
                      keep_prob:config.keep_probability}
                     )
             losses.append(loss)
-
+            ## add statistics to summary
+            writer.add_summary(summary,global_step=steps)
+            
             if idx % config.display_step == 0:
                 losses = losses[-20:]
                 l = sum(losses)/20
-                print('epoch: {}/{}, iteration: {}/{}, MA loss: {}'.format(e,config.epochs,idx,len(batches),l))
+                print('epoch: {}/{}, iteration: {}/{}, MA loss: {:.4f}, global_steps: {}, learning rate: {:.5f}'.format(e,config.epochs,idx,len(batches),l,steps,learn_r))
 
             if idx % config.save_step == 0 :
-                saver.save(sess, os.path.join(config.CPT_PATH,'hrnn_bot'),global_step =(e-1)*len(batches)+idx) 
+                saver.save(sess, os.path.join(config.CPT_PATH,'hrnn_bot'),global_step =steps) 
                 print('-------------- model saved ! -------------')
                 #train_ids = batches[0]
                 #pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths=helper.get_batch_seq2seq(train_enc_tokens, train_dec_tokens,vocab_to_int,train_ids)

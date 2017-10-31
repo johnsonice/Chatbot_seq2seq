@@ -113,7 +113,7 @@ def _compute_loss(targets, logits,target_sequence_length,max_target_sequence_len
     
     return loss
 
-def _get_learning_rate_decay(global_step, learning_rate, config):
+def _get_learning_rate_decay(global_step, config):
     """Get learning rate decay."""
     if (config.learning_rate_decay_scheme and config.learning_rate_decay_scheme == "luong"):
           start_decay_step = int(config.num_train_steps / 2)
@@ -123,17 +123,17 @@ def _get_learning_rate_decay(global_step, learning_rate, config):
           start_decay_step = config.start_decay_step
           decay_steps = config.decay_steps
           decay_factor = config.decay_factor
-    print("  decay_scheme=%s, start_decay_step=%d, decay_steps %d,decay_factor %g" %
+    print("  decay_scheme=%s, start_decay_step=%d, decay_steps=%d,decay_factor %g" %
           (config.learning_rate_decay_scheme, config.start_decay_step, config.decay_steps, config.decay_factor))
     
     return tf.cond(
             global_step < start_decay_step,
-            lambda: learning_rate,
+            lambda: config.learning_rate,
             lambda: tf.train.exponential_decay(
-                            learning_rate,
+                            config.learning_rate,
                             (global_step - start_decay_step),
-                            decay_steps, decay_factor, staircase=True),
-                            name="learning_rate_decay_cond")
+                            decay_steps, decay_factor, staircase=True), 
+                            name="learning_rate_decay_cond")             ## using staircase decay 
 
 
 #%%
@@ -197,22 +197,6 @@ def bidirection_encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob,
     return enc_output, enc_state#,hidden_states
 
 #%%
-def process_decoder_input(target_data, target_vocab_to_int):
-    """
-    Preprocess target data for encoding
-    :param target_data: Target Placehoder
-    :param target_vocab_to_int: Dictionary to go from the target words to an id
-    :param batch_size: Batch Size
-    :return: Preprocessed target data
-    """
-    # TODO: Implement Function
-    batch_size = tf.shape(target_data)[0]
-    ending = tf.strided_slice(target_data,[0,0],[batch_size,-1],[1,1])
-    dec_input = tf.concat([tf.fill([batch_size,1],target_vocab_to_int['<GO>']),ending],1)
-    
-    return dec_input
-
-#%%
 def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob, 
                    source_sequence_length, source_vocab_size, 
                    encoding_embedding_size):
@@ -236,10 +220,46 @@ def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob,
         
         return drop_cell
     
-    enc_cell = tf.contrib.rnn.MultiRNNCell([make_cell(rnn_size,keep_prob) for _ in range(num_layers)])
-    enc_output,enc_state = tf.nn.dynamic_rnn(enc_cell,enc_embed_input,sequence_length=source_sequence_length,dtype=tf.float32)
-
+    if config.bidirection:
+        cell_fw = tf.contrib.rnn.MultiRNNCell([make_cell(rnn_size,keep_prob) for _ in range(num_layers)])
+        cell_bw = tf.contrib.rnn.MultiRNNCell([make_cell(rnn_size,keep_prob) for _ in range(num_layers)])
+        enc_output, bi_encoder_state = tf.nn.bidirectional_dynamic_rnn( 
+                                   cell_fw, 
+                                   cell_bw,                     
+                                   enc_embed_input,
+                                   source_sequence_length,
+                                   dtype=tf.float32)
+        
+        enc_output = tf.concat(enc_output,-1)
+        if num_layers == 1: 
+            enc_state = bi_encoder_state
+        else:
+            encoder_state = []
+            for layer_id in range(num_layers):
+                encoder_state.append(bi_encoder_state[0][layer_id])  # forward
+                encoder_state.append(bi_encoder_state[1][layer_id])  # backward
+            
+            enc_state = tuple(encoder_state)
+    else:
+        enc_cell = tf.contrib.rnn.MultiRNNCell([make_cell(rnn_size,keep_prob) for _ in range(num_layers)])
+        enc_output,enc_state = tf.nn.dynamic_rnn(enc_cell,enc_embed_input,sequence_length=source_sequence_length,dtype=tf.float32)
+        
     return enc_output, enc_state
+
+#%%
+def process_decoder_input(target_data, target_vocab_to_int):
+    """
+    Preprocess target data for encoding
+    :param target_data: Target Placehoder
+    :param target_vocab_to_int: Dictionary to go from the target words to an id
+    :param batch_size: Batch Size
+    :return: Preprocessed target data
+    """
+    batch_size = tf.shape(target_data)[0]
+    ending = tf.strided_slice(target_data,[0,0],[batch_size,-1],[1,1])
+    dec_input = tf.concat([tf.fill([batch_size,1],target_vocab_to_int['<GO>']),ending],1)
+    
+    return dec_input
 
 #%%
 def decoding_layer_train(encoder_output,encoder_state, dec_cell, dec_embed_input, 
@@ -286,11 +306,6 @@ def decoding_layer_train(encoder_output,encoder_state, dec_cell, dec_embed_input
     
     return training_decoder_output
 
-
-#%%
-
-
-#%%
 #%%
 def decoding_layer_infer_beam_search(encoder_output,encoder_state, dec_cell, dec_embeddings, start_of_sequence_id,
                          end_of_sequence_id,source_sequence_length,max_target_sequence_length,
@@ -310,7 +325,6 @@ def decoding_layer_infer_beam_search(encoder_output,encoder_state, dec_cell, dec
     :param keep_prob: Dropout keep probability
     :return: BasicDecoderOutput containing inference logits and sample_id
     """
-    # TODO: Implement Function
     
     start_tokens = tf.tile(tf.cast([start_of_sequence_id],dtype=tf.int32),[batch_size],name='start_tokens')
     end_token = end_of_sequence_id
@@ -432,43 +446,4 @@ def decoding_layer_with_attention(dec_input, encoder_output,encoder_state,
     return training_decoder_output, inference_decoder_output
 
 
-    
-    
-
 #%%
-    
-#
-#def decoding_layer_infer(encoder_state, dec_cell, dec_embeddings, start_of_sequence_id,
-#                         end_of_sequence_id, max_target_sequence_length,
-#                         vocab_size, output_layer, batch_size, keep_prob):
-#    """
-#    Create a decoding layer for inference
-#    :param encoder_state: Encoder state
-#    :param dec_cell: Decoder RNN Cell
-#    :param dec_embeddings: Decoder embeddings
-#    :param start_of_sequence_id: GO ID
-#    :param end_of_sequence_id: EOS Id
-#    :param max_target_sequence_length: Maximum length of target sequences
-#    :param vocab_size: Size of decoder/target vocabulary
-#    :param decoding_scope: TenorFlow Variable Scope for decoding
-#    :param output_layer: Function to apply the output layer
-#    :param batch_size: Batch size
-#    :param keep_prob: Dropout keep probability
-#    :return: BasicDecoderOutput containing inference logits and sample_id
-#    """
-#    # TODO: Implement Function
-#    
-#    start_tokens = tf.tile(tf.constant([start_of_sequence_id],dtype=tf.int32),[batch_size],name='start_tokens')
-#    inference_helper=tf.contrib.seq2seq.GreedyEmbeddingHelper(dec_embeddings,
-#                                                             start_tokens,
-#                                                             end_of_sequence_id)
-#    inference_decoder = tf.contrib.seq2seq.BasicDecoder(dec_cell,
-#                                                       inference_helper,
-#                                                       encoder_state,
-#                                                       output_layer)
-#    inference_decoder_output,_,_ = tf.contrib.seq2seq.dynamic_decode(inference_decoder,
-#                                                                  impute_finished=True,
-#                                                                  maximum_iterations=max_target_sequence_length)
-#
-#    return inference_decoder_output
-#    
