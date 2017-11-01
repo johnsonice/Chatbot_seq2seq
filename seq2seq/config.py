@@ -24,7 +24,7 @@ max_conv_length = 6
 #######################
 ## determine structure
 #######################
-bidirection = True
+bidirection = False
 hrnn = False
 ## tensorboard
 tensorboard = True
@@ -53,8 +53,8 @@ target_vocab_size = 100000
 # Learning Rate
 learning_rate = 0.001
 learning_rate_decay_scheme = False
-start_decay_step = 10000
-decay_steps = 10000
+start_decay_step = 100000
+decay_steps = 100000
 decay_factor = 0.7
 
 
