@@ -53,9 +53,10 @@ target_vocab_size = 100000
 # Learning Rate
 learning_rate = 0.001
 learning_rate_decay_scheme = False
+clear_step = False
 start_decay_step = 100000
 decay_steps = 100000
-decay_factor = 0.7
+decay_factor = 0.9
 
 
 ###################

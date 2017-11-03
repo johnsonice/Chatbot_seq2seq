@@ -103,6 +103,10 @@ with tf.Session() as sess:
     else:
         print("Initiate a new model.")
     
+    if config.clear_step:
+        	clear_step_op = global_step.assign(0)
+        	sess.run(clear_step_op)
+        
     losses = list() 
     for e in range(1,config.epochs+1):
         shuffle(batches)  # for debuging purpose, don't randomize batches for now 
