@@ -13,12 +13,9 @@ import config
 import tensorflow as tf 
 #import numpy as np 
 import seq2seq
-import pickle
+#import pickle
 #from tensorflow.python.layers.core import Dense
-
-
 #%%
-
 ## first, load and pad data 
 ## load all data and vocabulary
 vocab_path = os.path.join(config.PROCESSED_PATH,'vocab.p')
@@ -40,8 +37,9 @@ input_data, targets, lr, keep_prob, target_sequence_length, max_target_sequence_
 input_shape = tf.shape(input_data)
 batch_size_t = input_shape[0]
 ## here source sequence length might be a problem 
-enc_output,enc_state = seq2seq.encoding_layer(tf.reverse(input_data,[-1]), config.rnn_size, config.num_layers, keep_prob, 
-                   source_sequence_length, config.source_vocab_size, config.encoding_embedding_size)
+with tf.variable_scope("encoder"):
+    enc_output,enc_state = seq2seq.encoding_layer(tf.reverse(input_data,[-1]), config.rnn_size, config.num_layers, keep_prob, 
+                       source_sequence_length, config.source_vocab_size, config.encoding_embedding_size)
 
 #%%
 ## build decoder 
@@ -54,30 +52,46 @@ with tf.variable_scope("decoder"):
                                                                                source_sequence_length,target_sequence_length, config.max_target_sentence_length,
                                                                                config.rnn_size,config.decoder_num_layers, target_vocab_to_int, 
                                                                                config.target_vocab_size,batch_size_t, 
-                                                                               keep_prob, config.decoding_embedding_size)
+                                                                               keep_prob, config.decoding_embedding_size,config.beam_width)
     
 #%%
+
 # build cost and optimizer
 training_logits = tf.identity(training_decoder_output.rnn_output, name='logits')
-inference_logits = tf.identity(inference_decoder_output.sample_id, name='predictions')
-masks = tf.sequence_mask(target_sequence_length,max_target_sequence_length,dtype=tf.float32,name='masks')
-with tf.name_scope('optimization'):
-    # Loss function
-    cost = tf.contrib.seq2seq.sequence_loss(
-            training_logits,
-            targets,
-            masks)
+
+if config.beam_width> 0:
+    #training_logits = tf.no_op()
+    inference_logits = tf.identity(inference_decoder_output.predicted_ids, name='predictions')
+    scores = tf.identity(inference_decoder_output.beam_search_decoder_output.scores, name='predictions')
+else:
+    inference_logits = tf.identity(inference_decoder_output.sample_id, name='predictions')
     
+global_step = tf.Variable(0, trainable=False)
+learning_rate = seq2seq._get_learning_rate_decay(global_step, config)
+
+with tf.name_scope('optimization'):
+    # Loss function    
+    cost = seq2seq._compute_loss(targets,training_logits,target_sequence_length,max_target_sequence_length)
+
     # optimizer 
-    optimizer = tf.train.AdamOptimizer(lr)
+    optimizer = tf.train.AdamOptimizer(learning_rate)
     gradients = optimizer.compute_gradients(cost)
     capped_gradients = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gradients if grad is not None]
-    train_op = optimizer.apply_gradients(capped_gradients)
+    train_op = optimizer.apply_gradients(capped_gradients,global_step=global_step)
 
 
+## summaries for tensorboard 
+tf.summary.scalar("learning_rate", learning_rate)
+tf.summary.scalar("train_loss", cost)
+train_summary = tf.summary.merge_all()
+    
+    
 #%%
 
-## now test if it wokrs at all, try one step 
+## training steps:
+    
+helper._make_dir(config.CPT_PATH)
+writer = tf.summary.FileWriter(config.SUMMARY_PATH)
 
 with tf.Session() as sess:
     saver= tf.train.Saver(max_to_keep=5)
@@ -86,10 +100,16 @@ with tf.Session() as sess:
     if lattest_ckpt is not None:
         saver.restore(sess, os.path.join(lattest_ckpt))
         print("Model restored.")
+    else:
+        print("Initiate a new model.")
     
+    if config.clear_step:
+        	clear_step_op = global_step.assign(0)
+        	sess.run(clear_step_op)
+        
     losses = list() 
     for e in range(1,config.epochs+1):
-        #shuffle(batches)  # for debuging purpose, don't randomize batches for now 
+        shuffle(batches)  # for debuging purpose, don't randomize batches for now 
         for idx,ids in enumerate(batches,1):
             #ids = [18948, 18949, 18950, 18953, 18954, 18957, 18958, 18959]
             pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths=helper.get_batch_seq2seq(train_enc_tokens, train_dec_tokens,vocab_to_int,ids)   
@@ -97,30 +117,26 @@ with tf.Session() as sess:
             #pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths,max_length = pickle.load(open('debug.p','rb'))
             if target_lengths[0]>config.max_target_sentence_length: continue
 #            try:
-            _,loss = sess.run(
-                    [train_op,cost],
+            _,loss,steps,learn_r,summary = sess.run(
+                    [train_op,cost,global_step,learning_rate,train_summary],
                     {input_data:pad_encoder_batch,
                      targets:pad_decoder_batch,
-                     lr: config.learning_rate,
+                     lr: config.learning_rate,      ## this part is actually not used
                      target_sequence_length:target_lengths,
                      source_sequence_length:source_lengths,
                      keep_prob:config.keep_probability}
                     )
             losses.append(loss)
-#            except:
-#                print(ids)
-#                print("target sequence length:{}, max target sequence length {}".format(target_lengths[0],config.max_target_sentence_length) )
-#                pickle.dump((pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,config.max_target_sentence_length),open('debug.p','wb'))
-#                #saver.save(sess, os.path.join(config.CPT_PATH,'hrnn_bot'),global_step = (e-1)*len(batches)+idx)
-#                #raise ValueError('something went wrong!')
-#                
+            ## add statistics to summary
+            writer.add_summary(summary,global_step=steps)
+            
             if idx % config.display_step == 0:
                 losses = losses[-20:]
                 l = sum(losses)/20
-                print('epoch: {}/{}, iteration: {}/{}, MA loss: {}'.format(e,config.epochs,idx,len(batches),l))
+                print('epoch: {}/{}, iteration: {}/{}, MA loss: {:.4f}, global_steps: {}, learning rate: {:.5f}'.format(e,config.epochs,idx,len(batches),l,steps,learn_r))
 
             if idx % config.save_step == 0 :
-                saver.save(sess, os.path.join(config.CPT_PATH,'hrnn_bot'),global_step =(e-1)*len(batches)+idx) 
+                saver.save(sess, os.path.join(config.CPT_PATH,'hrnn_bot'),global_step =steps) 
                 print('-------------- model saved ! -------------')
                 #train_ids = batches[0]
                 #pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths=helper.get_batch_seq2seq(train_enc_tokens, train_dec_tokens,vocab_to_int,train_ids)
@@ -129,5 +145,11 @@ with tf.Session() as sess:
                     {input_data: pad_encoder_batch,
                      source_sequence_length: source_lengths,
                      keep_prob: 1.0})
-                result = [int_to_vocab[l] for s in batch_train_logits for l in s if l != 0]
-                print(result)
+                if config.beam_width>0:
+                    for i in range(config.beam_width):
+                        first_res = batch_train_logits[0,:,i]
+                        result = [int_to_vocab[s] for s in first_res if s != -1]
+                        print(result)
+                else:
+                    result = [int_to_vocab[l] for s in batch_train_logits for l in s if l != 0]
+                    print(result)
