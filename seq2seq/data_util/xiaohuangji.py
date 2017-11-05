@@ -19,13 +19,27 @@ import config
 import pickle 
 from collections import Counter
 from nltk.tokenize import  word_tokenize #,sent_tokenize
-
+from data_util import  user_replace
 import jieba
 #%%
 #########################################
 ## process cornell movie - dialogs data #
 #########################################
 
+replace_dict = user_replace.replace_dict
+test = '我是小通，你叫什么名字, 我今年15岁'
+def replace_tokens(text,replace_dict):
+    for k,v in replace_dict.items():
+        pattern = re.compile("|".join(v)) 
+        
+    
+    return 
+
+replace_tokens(test,replace_dict)
+
+#%%
+
+#%%
 ## get all sentences with sentence id 
 def get_lines():
     #id2line = {}
