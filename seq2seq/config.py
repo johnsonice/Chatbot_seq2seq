@@ -8,7 +8,8 @@ Created on Mon Oct  9 16:35:29 2017
 # parameters for processing the dataset
 DATA_PATH = './data/xiaohuangji'
 #CONVO_FILE = 'xiaohuangji50w_fenciA.conv'
-LINE_FILE = 'xiaohuangji50w_fenciA.conv'
+#LINE_FILE = 'xiaohuangji50w_fenciA.conv'
+LINE_FILE = 'xiaohuangji50w_nofenci.conv'
 OUTPUT_FILE = 'output_convo.txt'
 PROCESSED_PATH = './data/xiaohuangji/processed'
 CPT_PATH = 'checkpoints'
