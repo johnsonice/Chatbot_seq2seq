@@ -19,7 +19,7 @@ import seq2seq
 ## first, load and pad data 
 ## load all data and vocabulary
 vocab_path = os.path.join(config.PROCESSED_PATH,'vocab.p')
-train_token_path = os.path.join(config.PROCESSED_PATH,'processed_text.p')
+train_token_path = os.path.join(config.PROCESSED_PATH,'processed_tokens.p')
 vocab_to_int,int_to_vocab = helper.load_vocab(vocab_path)
 config.source_vocab_size = len(vocab_to_int)
 config.target_vocab_size = len(vocab_to_int)
@@ -91,6 +91,7 @@ train_summary = tf.summary.merge_all()
 ## training steps:
     
 helper._make_dir(config.CPT_PATH)
+helper._make_dir(config.CPT_PATH_FINAL)
 writer = tf.summary.FileWriter(config.SUMMARY_PATH)
 
 with tf.Session() as sess:
@@ -107,9 +108,10 @@ with tf.Session() as sess:
         	clear_step_op = global_step.assign(0)
         	sess.run(clear_step_op)
         
+    lowest_l = None
     losses = list() 
     for e in range(1,config.epochs+1):
-        shuffle(batches)  # for debuging purpose, don't randomize batches for now 
+        if e > config.start_shufle-1: shuffle(batches)  # for debuging purpose, don't randomize batches for now 
         for idx,ids in enumerate(batches,1):
             #ids = [18948, 18949, 18950, 18953, 18954, 18957, 18958, 18959]
             pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths=helper.get_batch_seq2seq(train_enc_tokens, train_dec_tokens,vocab_to_int,ids)   
@@ -131,9 +133,20 @@ with tf.Session() as sess:
             writer.add_summary(summary,global_step=steps)
             
             if idx % config.display_step == 0:
-                losses = losses[-20:]
-                l = sum(losses)/20
+                losses = losses[-100:]
+                l = sum(losses)/100
                 print('epoch: {}/{}, iteration: {}/{}, MA loss: {:.4f}, global_steps: {}, learning rate: {:.5f}'.format(e,config.epochs,idx,len(batches),l,steps,learn_r))
+
+                ## check lowest loss and save when lost is the lowest 
+                if lowest_l is None:
+                    lowest_l = l 
+                else:
+                    if lowest_l > l and steps> config.start_decay_step:
+                        lowest_l = l 
+                        ## save the check points
+                        saver.save(sess, os.path.join(config.CPT_PATH_FINAL,'hrnn_bot'),global_step =steps) 
+                        print('---------------lowest loss update, check points saved -----------')
+                        
 
             if idx % config.save_step == 0 :
                 saver.save(sess, os.path.join(config.CPT_PATH,'hrnn_bot'),global_step =steps) 
@@ -153,3 +166,6 @@ with tf.Session() as sess:
                 else:
                     result = [int_to_vocab[l] for s in batch_train_logits for l in s if l != 0]
                     print(result)
+                    
+
+        
