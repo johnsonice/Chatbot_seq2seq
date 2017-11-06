@@ -18,7 +18,7 @@ os.chdir('../')
 #####################################
 import random 
 import re 
-import numpy as np
+#import numpy as np
 import config 
 import pickle 
 from collections import Counter
@@ -244,88 +244,6 @@ def load_training_data(train_token_path):
 #train_token_path = os.path.join(config.PROCESSED_PATH,'processed_text.p')
 #vocab_to_int,int_to_vocab = load_vocab(vocab_path)
 #train_enc_tokens, train_dec_tokens, test_enc_tokens,test_dec_tokens = load_training_data(train_token_path)
-
-#%%
-### put training data into buckets 
-def bucket_training_data(train_enc_tokens,train_dec_tokens):
-    buckets = range(len(config.BUCKETS)) 
-    data_id_buckets = {i:list() for i in buckets}
-    for idx in range(len(train_enc_tokens)):
-        for bucket_id, (encode_max_size, decode_max_size) in enumerate(config.BUCKETS):
-            if len(train_enc_tokens[idx]) <= encode_max_size and len(train_dec_tokens[idx]) <= decode_max_size:
-                data_id_buckets[bucket_id].append(idx)
-    return data_id_buckets   
-
-def make_batches_of_bucket_ids(data_id_buckets,batch_size):
-    id_batches = list() 
-    for i,v in data_id_buckets.items():
-        for batch_i in range(len(v)//batch_size):
-            start_i = batch_i * batch_size
-            ## slice the right amount for the batch 
-            id_batches.append(v[start_i:start_i+batch_size])
-    
-    return id_batches
-
-#%%
-def sentence2id(line,vocab_to_int):
-    return [vocab_to_int.get(token,vocab_to_int['<UNK>']) for token in line] + [vocab_to_int['<EOS>']]
-
-#test = ['i','am','a','research','assistant']
-#ids = sentence2id(test,vocab_to_int)
-
-#%%
-## pad_context_batch is designed for hrnn not for absic sequence to sequence 
-## for basic sequence to sequence, just use pad_answer_batch
-def pad_context_batch(batch, vocab_to_int):
-    """Pad sentences with <PAD> so that each sentence of a batch has the same length"""
-    max_sentence = max([len(s) for conv in batch for s in conv])
-    pad_batch = []
-    for conv in batch:
-        pad_sentence = [sentence2id(sentence,vocab_to_int) + [vocab_to_int['<PAD>']] * (max_sentence - len(sentence)) for sentence in conv]
-        pad_batch.append(pad_sentence)
-        
-    return pad_batch
-
-def pad_answer_batch(batch, vocab_to_int):
-    max_sentence = max([len(s) for s in batch ])
-    pad_batch = [sentence2id(sentence,vocab_to_int) + [vocab_to_int['<PAD>']] * (max_sentence - len(sentence)) for sentence in batch]
-
-    return pad_batch
-
-def get_batch_seq2seq(train_enc_tokens, train_dec_tokens,vocab_to_int,ids):
-    encoder_input = [train_enc_tokens[i] for i in ids]
-    pad_encoder_input = np.array(pad_answer_batch(encoder_input,vocab_to_int))
-    decoder_input = [train_dec_tokens[i] for i in ids]
-    pad_decoder_input = np.array(pad_answer_batch(decoder_input,vocab_to_int))
-    
-    pad_encoder_shape = pad_encoder_input.shape
-    pad_decoder_shape = pad_decoder_input.shape
-    
-    source_sequence_length = [pad_encoder_shape[1]]*pad_encoder_shape[0]
-    target_sequence_length = [pad_decoder_shape[1]]*pad_decoder_shape[0]
-    
-    return pad_encoder_input, pad_decoder_input, source_sequence_length,target_sequence_length
-    
-    
-def get_batch_hrnn(train_enc_tokens, train_dec_tokens,vocab_to_int,ids):
-    encoder_input = [train_enc_tokens[i] for i in ids]
-    pad_encoder_input = np.array(pad_context_batch(encoder_input,vocab_to_int))
-    pad_encoder_shape = pad_encoder_input.shape
-    decoder_input = [train_dec_tokens[i] for i in ids]
-    pad_decoder_input = np.array(pad_answer_batch(decoder_input,vocab_to_int))
-    pad_decoder_shape = pad_decoder_input.shape
-
-    source_sequence_length = [pad_encoder_shape[2]]*(pad_encoder_shape[0]*pad_encoder_shape[1])
-    hrnn_sequence_length = [pad_encoder_shape[1]]*pad_encoder_shape[0]
-    target_sequence_length = [pad_decoder_shape[1]]*pad_decoder_shape[0]
-    
-    return pad_encoder_input, pad_decoder_input, source_sequence_length,target_sequence_length,hrnn_sequence_length
-    
-
-#ids = [0,1,2,3]
-#pad_encoder_input, pad_decoder_input, source_sequence_length,target_sequence_length =  get_batch_seq2seq(train_enc_tokens, train_dec_tokens,vocab_to_int,ids)
-#pad_encoder_batch = pad_context_batch(encoder_input,vocab_to_int)
-#pad_decoder_batch = pad_answer_batch(decoder_input,vocab_to_int)
 
 
 #%%
