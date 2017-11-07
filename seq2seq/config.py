@@ -67,7 +67,7 @@ decay_factor = 0.7
 ### display steps##
 ###################
 display_step = 100
-save_step = 10000
+save_step = 5000
 start_shufle = 1
 
 

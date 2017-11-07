@@ -111,6 +111,8 @@ def save_tokenized_data(context,answers):
 
 #%%
 #def main():
+scaling_factor = 50    
+
 convs_list = []
 data_files = os.listdir(DATA_PATH)
 for p in data_files:
@@ -127,7 +129,7 @@ for p in data_files:
     
 convs_list_short = clear_convs(convs_list)
 context,answers = context_answers(convs_list_short)
-_ = save_tokenized_data(context,answers)
+_ = save_tokenized_data(context*scaling_factor,answers*scaling_factor)
 
 #
 #if __name__ == '__main__':
