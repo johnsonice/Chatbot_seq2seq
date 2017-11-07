@@ -71,29 +71,66 @@ def context_answers(convs):
     assert len(context) == len(answers)
     return context,answers
 
+def _basic_tokenizer(line,normalize_digits=False):
+    """
+    A basic tokenizer to tokenize text into tokens
+    """    
+    _DIGIT_RE = re.compile(r"\d+")  ## find digits 
+    
+    words = []
+    tokens = list(jieba.cut(line.strip().lower()))
+    if normalize_digits:
+        for token in tokens:
+            m = _DIGIT_RE.search(token)
+            if m is None:
+                words.append(token)
+            else:
+                words.append('_数字_')
+    else:
+        words = tokens 
+    
+    return words 
+
+## same thing, for xiaohuangji data, do not need to run this, 
+## already tokenized
+def save_tokenized_data(context,answers):
+    save_file_path = os.path.join(PROCESSED_PATH,'processed_tokens.p')
+    
+    train_enc_tokens = [_basic_tokenizer(t) for t in context]
+    print('Train_enc_token done.')
+    
+    train_dec_tokens = [_basic_tokenizer(t) for t in answers]
+    print('Train_dec_token done.')
+    
+    pickle.dump((train_enc_tokens, train_dec_tokens,[],[]),open(save_file_path,'wb'))
+    return train_enc_tokens, train_dec_tokens, [],[]
 #%%
 #x = read_txt('18_Füèsñ¬F«¦s+ò_yes.txt',ENCODING[0])
 ##%%
 #convs = get_convs(x)
 
 #%%
-def main():
-    convs_list = []
-    data_files = os.listdir(DATA_PATH)
-    for p in data_files:
-        #print(p)
-        try:
-            combine_lines = read_txt(p,ENCODING[0])
-        except:
-            combine_lines = read_txt(p,ENCODING[1])
-        ## eyeball mistakes, encoding issues 
-        #print(combine_lines[0])
-        ## convert to conversions 
-        convs = get_convs(combine_lines)
-        convs_list.extend(convs)
-        
-    convs_list_short = clear_convs(convs_list)
+#def main():
+convs_list = []
+data_files = os.listdir(DATA_PATH)
+for p in data_files:
+    #print(p)
+    try:
+        combine_lines = read_txt(p,ENCODING[0])
+    except:
+        combine_lines = read_txt(p,ENCODING[1])
+    ## eyeball mistakes, encoding issues 
+    #print(combine_lines[0])
+    ## convert to conversions 
+    convs = get_convs(combine_lines)
+    convs_list.extend(convs)
+    
+convs_list_short = clear_convs(convs_list)
+context,answers = context_answers(convs_list_short)
+_ = save_tokenized_data(context,answers)
 
-
+#
+#if __name__ == '__main__':
+#  main()
 
 

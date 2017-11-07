@@ -18,8 +18,8 @@ import seq2seq
 #%%
 ## first, load and pad data 
 ## load all data and vocabulary
-vocab_path = os.path.join(config.PROCESSED_PATH,'vocab.p')
-train_token_path = os.path.join(config.PROCESSED_PATH,'processed_tokens.p')
+vocab_path = os.path.join(config.OVERALL_PROCESSED_PATH,'vocab.p')
+train_token_path = os.path.join(config.OVERALL_PROCESSED_PATH,'processed_tokens.p')
 vocab_to_int,int_to_vocab = helper.load_vocab(vocab_path)
 config.source_vocab_size = len(vocab_to_int)
 config.target_vocab_size = len(vocab_to_int)
