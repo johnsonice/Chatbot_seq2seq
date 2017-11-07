@@ -46,8 +46,8 @@ num_layers = 4
 if bidirection: num_layers = int(num_layers/2)
 decoder_num_layers = 4 
 # Embedding Size
-encoding_embedding_size = 300
-decoding_embedding_size = 300
+encoding_embedding_size = 400
+decoding_embedding_size = 400
 keep_probability = 0.8
 max_target_sentence_length= 55
 beam_width = 10
