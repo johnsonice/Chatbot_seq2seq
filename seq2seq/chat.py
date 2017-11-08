@@ -12,6 +12,7 @@ import data_helper as helper
 import config
 import os 
 import numpy as np
+import jieba
 #from nltk.tokenize import  word_tokenize 
 
 #%%
@@ -19,7 +20,7 @@ dir(tf.contrib)
 class chatbot(object):
 
     def __init__(self, config):
-        vocab_path = os.path.join(config.PROCESSED_PATH,'vocab.p')
+        vocab_path = os.path.join(config.OVERALL_PROCESSED_PATH,'vocab.p')
         self.vocab_to_int,self.int_to_vocab = helper.load_vocab(vocab_path)
         self.graph, self.sess = self.load_graph()
         self.inference_logits,self.input_data,self.source_sequence_length,self.keep_prob = self.get_tensors()
@@ -53,7 +54,8 @@ class chatbot(object):
 
 
     def get_response(self,user_in):
-        user_in_tokens = [i for i in user_in]
+        #user_in_tokens = [i for i in user_in]
+        user_in_tokens = [list(jieba.cut(user_in[0]))]
         pad_encoder_input = np.array(helper.pad_answer_batch(user_in_tokens,self.vocab_to_int))
         source_lengths = [pad_encoder_input.shape[1]]*pad_encoder_input.shape[0]
         
@@ -79,7 +81,7 @@ class chatbot(object):
                     end_idx = res.index(end_token)   ## get position of sentance end token  
                     res = res[:end_idx]
                 results.append(''.join(res))
-            return(results[-1])
+            return(results)
         else:
             result = [self.int_to_vocab[l] for s in output for l in s if l != 0]
             if end_token in result:
@@ -98,7 +100,7 @@ chatbot = chatbot(config)
 user_ins= ['你笨吗','你叫什么名字','你喜欢吃炸薯条吗',
              '到底是怎么回事','你怎么看','你能做什么',
              '你在做什么','你有什么问题','你有问题吗',
-             '你打算做什么','你是做什么工作的']
+             '你能帮我卖东西么','你是做什么工作的','你有些什么功能']
 
 #%%
 for i in user_ins:
