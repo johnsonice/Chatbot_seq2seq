@@ -14,6 +14,8 @@ import os
 import numpy as np
 import jieba
 #from nltk.tokenize import  word_tokenize 
+USER_DICT = './data_util/userdict.txt'
+jieba.load_userdict(USER_DICT)
 
 #%%
 dir(tf.contrib)
@@ -97,10 +99,10 @@ class chatbot(object):
 chatbot = chatbot(config)
 
 #%%
-user_ins= ['你笨吗','你叫什么名字','你喜欢吃炸薯条吗',
-             '到底是怎么回事','你怎么看','你能做什么',
-             '你在做什么','你有什么问题','你有问题吗',
-             '你能帮我卖东西么','你是做什么工作的','你有些什么功能']
+user_ins= ['我还不了解你，不知道说什么','学习我的思维？','你知道我在想什么吗？',
+             '到底是怎么回事','你怎么看','其实我最大的兴趣是挣钱，还是高效率的',
+             '你在做什么','听说你能陪人聊天？','不会是要坑我吧？',
+             '你能帮我卖东西么','你是做什么工作的','你是人还是机器人？']
 
 #%%
 for i in user_ins:
