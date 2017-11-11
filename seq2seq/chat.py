@@ -7,12 +7,15 @@ Created on Mon Oct 16 21:24:25 2017
 """
 
 ### chat bot inference 
+import pickle
 import tensorflow as tf
 import data_helper as helper
 import config
 import os 
 import numpy as np
 import jieba
+import re
+from data_util.user_replace import custom_dict
 #from nltk.tokenize import  word_tokenize 
 USER_DICT = './data_util/userdict.txt'
 jieba.load_userdict(USER_DICT)
@@ -25,6 +28,7 @@ class chatbot(object):
         vocab_path = os.path.join(config.OVERALL_PROCESSED_PATH,'vocab.p')
         self.vocab_to_int,self.int_to_vocab = helper.load_vocab(vocab_path)
         self.graph, self.sess = self.load_graph()
+        self.custom_dict = custom_dict
         self.inference_logits,self.input_data,self.source_sequence_length,self.keep_prob = self.get_tensors()
         print('Chatbot model created')
         
@@ -70,6 +74,13 @@ class chatbot(object):
         result = self.post_process(output)
         return result
     
+    def replace_custom_tokens(self,res):
+        # use these three lines to do the replacement
+        rep = dict((re.escape(k), v) for k, v in self.custom_dict.items())
+        pattern = re.compile("|".join(rep.keys()))
+        res = pattern.sub(lambda m: rep[re.escape(m.group(0))], res)
+        return res
+    
     def post_process(self,output):
         results = list()
         
@@ -82,16 +93,17 @@ class chatbot(object):
                 if end_token in res:
                     end_idx = res.index(end_token)   ## get position of sentance end token  
                     res = res[:end_idx]
-                results.append(''.join(res))
+                results.append(self.replace_custom_tokens(''.join(res)))
             return(results)
         else:
             result = [self.int_to_vocab[l] for s in output for l in s if l != 0]
             if end_token in result:
                     end_idx = result.index(end_token)  ## get position of sentance end token 
                     result = result[:end_idx]
-            result = ''.join(result)
+            result = self.replace_custom_tokens(''.join(result))
             return result 
-        
+    
+
             
 #%%
 
@@ -101,7 +113,7 @@ chatbot = chatbot(config)
 #%%
 user_ins= ['我还不了解你，不知道说什么','学习我的思维？','你知道我在想什么吗？',
              '到底是怎么回事','你怎么看','其实我最大的兴趣是挣钱，还是高效率的',
-             '你在做什么','听说你能陪人聊天？','不会是要坑我吧？',
+             '你在做什么','听说你能陪人聊天？',
              '你能帮我卖东西么','你是做什么工作的','你是人还是机器人？']
 
 #%%
@@ -110,9 +122,28 @@ for i in user_ins:
     print('ask:',user_in)
     print('response:',chatbot.get_response(user_in))
 
+
+#%5
 ##%%
 #user_in = ['你喜欢吃薯条吗']
 #response = chatbot.get_response(user_in)
 #print(response)
 
-
+#%%
+#
+#ask = list()
+#ans = list()
+#for i in user_ins:
+#    user_in = [i]
+#    ask.append(user_in)
+#    ans.append(chatbot.get_response(user_in))
+#
+##%%
+#ask = [x[0] for x in ask]
+#result = list()
+#for i,e in enumerate(ans):
+#    result.append((ask[i],ans[i]))
+#    
+##%%
+#pickle.dump(result,open('results.p','wb'))
+## x = pickle.load(open('results.p','rb'))
