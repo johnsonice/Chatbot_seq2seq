@@ -120,7 +120,7 @@ user_ins= ['我还不了解你，不知道说什么','学习我的思维？','�
 for i in user_ins:
     user_in = [i]
     print('ask:',user_in)
-    print('response:',chatbot.get_response(user_in))
+    print('response:',chatbot.get_response(user_in)[0])
 
 
 #%5
