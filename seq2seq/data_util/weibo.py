@@ -85,14 +85,15 @@ def _tokenized_data(context,answers):
     
     return train_enc_tokens, train_dec_tokens
 
-def save_tokenized_data(train_enc_tokens,train_dec_tokens):
-    save_file_path = os.path.join(PROCESSED_PATH,'processed_tokens.p')
+def save_tokenized_data(train_enc_tokens,train_dec_tokens,save_file_name):
+    save_file_path = os.path.join(PROCESSED_PATH,save_file_name)
     pickle.dump((train_enc_tokens, train_dec_tokens,[],[]),open(save_file_path,'wb'))
     print('Data saved')
 #%%
 data_files = os.listdir(DATA_PATH)
+#%%
 asks,ans = [],[]
-for file_path in data_files:
+for idx,file_path in enumerate(data_files):
     #file_path = 'multi_1_4.data'
     convos = read_txt(file_path,ENCODING)
     context,answers = context_answers(convos)
@@ -101,9 +102,12 @@ for file_path in data_files:
     ans.extend(answers)
     print('finish {}'.format(file_path))
 
-context,answers = _tokenized_data(asks,ans) 
-save_tokenized_data(asks,ans)
+    context,answers = _tokenized_data(asks,ans) 
+    save_tokenized_data(context,answers,str(idx) + '_processed_tokens.p')
+    
 #%%
+print(context[:50])
+print(answers[:50])
 #n = 900910
 #print(context[n])
 #print(answers[n])
