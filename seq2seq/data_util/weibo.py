@@ -9,10 +9,11 @@ Created on Wed Dec 13 21:06:55 2017
 
 import os 
 import pickle 
-from collections import Counter
-import user_replace
+#from collections import Counter
+#import user_replace
 import jieba
 import re
+from multiprocessing import Pool 
 
 #%%
 
@@ -24,6 +25,8 @@ ENCODING = 'utf-8'
 jieba.load_userdict(USER_DICT)
 
 DELETE = ['\[.*?\]','\u200b']
+MULTI = True
+
 #%%
 def replace_tokens(text,replace_dict=None):
 #    for k,v in replace_dict.items():
@@ -90,7 +93,7 @@ def save_tokenized_data(train_enc_tokens,train_dec_tokens,save_file_name):
     pickle.dump((train_enc_tokens, train_dec_tokens,[],[]),open(save_file_path,'wb'))
     print('Data saved')
 #%%
-data_files = os.listdir(DATA_PATH)
+data_files = os.listdir(DATA_PATH)[:4]  ## just do two files for now, too many data 
 #%%
 asks,ans = [],[]
 for idx,file_path in enumerate(data_files):
@@ -102,12 +105,20 @@ for idx,file_path in enumerate(data_files):
     ans.extend(answers)
     print('finish {}'.format(file_path))
 
+if MULTI:
+    print('tokanizing, multi process')
+    cores = 30 
+    p = Pool(cores)
+    context = p.map(_basic_tokenizer,asks)
+    print('Finish tokenizing ask sentences')
+    answers = p.map(_basic_tokenizer,ans)
+    print('Finish tokenizing answer sentences')
+else:
     context,answers = _tokenized_data(asks,ans) 
-    save_tokenized_data(context,answers,str(idx) + '_processed_tokens.p')
+
+## save into pickles
+save_tokenized_data(context,answers,'processed_tokens.p')
     
 #%%
-print(context[:50])
-print(answers[:50])
-#n = 900910
-#print(context[n])
-#print(answers[n])
+#print(context[:50])
+#print(answers[:50])

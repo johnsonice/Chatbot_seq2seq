@@ -11,7 +11,7 @@ from collections import Counter
 
 ### combine all processed token data and build vocabulary 
 
-data_path = ['../data/xiaolajiao/processed/processed_tokens.p','../data/xiaohuangji/processed/processed_tokens.p']
+data_path = ['../data/xiaolajiao/processed/processed_tokens.p','../data/xiaohuangji/processed/processed_tokens.p','../data/weibo/processed/processed_tokens.p']
 #data_path = ['../data/xiaohuangji/processed/processed_tokens.p']
 PROCESSED_PATH = '../data/processed'
 
@@ -61,8 +61,10 @@ def build_vocab(pickle_file_path,CODES):
     all_words = []
     for t in tokens:
         all_words.extend(list(_flatten(t)))
-    
+    print('Finish flaten tokens')
     counts = Counter(all_words)
+    counts = {x : counts[x] for x in counts if counts[x] > 5 }   ## filter out words only appears once
+    print('Create counter')
     vocab = sorted(counts, key=counts.get, reverse=True)
     vocab_to_int = {word: ii for ii, word in enumerate(vocab, len(CODES))}  # enumerate start from len(CODES)
     vocab_to_int = dict(vocab_to_int,**CODES)
@@ -76,5 +78,11 @@ def build_vocab(pickle_file_path,CODES):
 #vocab_to_int,int_to_vocab = build_vocab(os.path.join(config.PROCESSED_PATH,'processed_tokens.p'),CODES)
 #%%
 
-train_enc,train_dec,test_enc,text_dec = combine_pickles(data_path)
+_ = combine_pickles(data_path)
+print('Finish combining datasets')
+del _ ## just clear memory
+print('clear memory')
+
+#%%
+print('building vocabulary')
 vocab_to_int,int_to_vocab = build_vocab(os.path.join(PROCESSED_PATH,'processed_tokens.p'),CODES)
