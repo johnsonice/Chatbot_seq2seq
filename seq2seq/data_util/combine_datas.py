@@ -63,7 +63,7 @@ def build_vocab(pickle_file_path,CODES):
         all_words.extend(list(_flatten(t)))
     print('Finish flaten tokens')
     counts = Counter(all_words)
-    counts = {x : counts[x] for x in counts if counts[x] > 5 }   ## filter out words only appears once
+    counts = {x : counts[x] for x in counts if counts[x] > 20 }   ## filter out words only appears once
     print('Create counter')
     vocab = sorted(counts, key=counts.get, reverse=True)
     vocab_to_int = {word: ii for ii, word in enumerate(vocab, len(CODES))}  # enumerate start from len(CODES)
@@ -86,3 +86,6 @@ print('clear memory')
 #%%
 print('building vocabulary')
 vocab_to_int,int_to_vocab = build_vocab(os.path.join(PROCESSED_PATH,'processed_tokens.p'),CODES)
+
+#%%
+print(len(vocab_to_int))

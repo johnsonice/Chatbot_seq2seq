@@ -93,7 +93,7 @@ def save_tokenized_data(train_enc_tokens,train_dec_tokens,save_file_name):
     pickle.dump((train_enc_tokens, train_dec_tokens,[],[]),open(save_file_path,'wb'))
     print('Data saved')
 #%%
-data_files = os.listdir(DATA_PATH)[:4]  ## just do two files for now, too many data 
+data_files = os.listdir(DATA_PATH)[:2]  ## just do two files for now, too many data 
 #%%
 asks,ans = [],[]
 for idx,file_path in enumerate(data_files):
@@ -107,12 +107,14 @@ for idx,file_path in enumerate(data_files):
 
 if MULTI:
     print('tokanizing, multi process')
-    cores = 30 
+    cores = os.cpu_count-1 
     p = Pool(cores)
     context = p.map(_basic_tokenizer,asks)
     print('Finish tokenizing ask sentences')
     answers = p.map(_basic_tokenizer,ans)
     print('Finish tokenizing answer sentences')
+    p.close()
+    p.join()
 else:
     context,answers = _tokenized_data(asks,ans) 
 
