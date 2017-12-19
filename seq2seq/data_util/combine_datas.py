@@ -56,7 +56,7 @@ def _flatten(container):
             yield i
 
 ## so idealy, we want to drop those words that does not happend very often 
-def build_vocab(pickle_file_path,CODES):
+def build_vocab(pickle_file_path,CODES,vocab_size):
     tokens = pickle.load(open(pickle_file_path,'rb'))
     all_words = []
     for t in tokens:
@@ -66,6 +66,7 @@ def build_vocab(pickle_file_path,CODES):
     counts = {x : counts[x] for x in counts if counts[x] > 20 }   ## filter out words only appears once
     print('Create counter')
     vocab = sorted(counts, key=counts.get, reverse=True)
+    if len(vocab)> 50000: vocab=vocab[:vocab_size]
     vocab_to_int = {word: ii for ii, word in enumerate(vocab, len(CODES))}  # enumerate start from len(CODES)
     vocab_to_int = dict(vocab_to_int,**CODES)
     int_to_vocab = {v_i: v for v, v_i in vocab_to_int.items()}
@@ -85,7 +86,7 @@ print('clear memory')
 
 #%%
 print('building vocabulary')
-vocab_to_int,int_to_vocab = build_vocab(os.path.join(PROCESSED_PATH,'processed_tokens.p'),CODES)
+vocab_to_int,int_to_vocab = build_vocab(os.path.join(PROCESSED_PATH,'processed_tokens.p'),CODES,50000)
 
 #%%
 print(len(vocab_to_int))
