@@ -18,7 +18,7 @@ from multiprocessing import Pool
 # parameters for processing the dataset
 DATA_PATH = '../data/weibo_single/raw'
 USER_DICT = './userdict.txt'
-PROCESSED_PATH = '../data/weibo/processed'
+PROCESSED_PATH = '../data/weibo_single/processed'
 ENCODING = 'utf-8'
 jieba.load_userdict(USER_DICT)
 
