@@ -190,7 +190,7 @@ def build_vocab(pickle_file_path,CODES):
 #%%
     
 def load_vocab(vocab_path):
-    vocab_to_int,int_to_vocab = pickle.load(open(vocab_path,'rb'))
+    vocab_to_int,int_to_vocab,_ = pickle.load(open(vocab_path,'rb'))
     return vocab_to_int,int_to_vocab
 
 def load_training_data(train_token_path):

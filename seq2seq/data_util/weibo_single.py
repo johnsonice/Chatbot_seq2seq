@@ -118,9 +118,6 @@ def save_tokenized_data(train_enc_tokens,train_dec_tokens,save_file_name):
     pickle.dump((train_enc_tokens, train_dec_tokens,[],[]),open(save_file_path,'wb'))
     print('Data saved')
     
-    
-    
-    
 #%%
 if __name__ == "__main__":
     

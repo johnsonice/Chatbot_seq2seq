@@ -111,7 +111,7 @@ def save_tokenized_data(context,answers):
 
 #%%
 #def main():
-scaling_factor = 500    
+scaling_factor = 100    
 
 convs_list = []
 data_files = os.listdir(DATA_PATH)

@@ -24,7 +24,7 @@ vocab_to_int,int_to_vocab = helper.load_vocab(vocab_path)
 config.source_vocab_size = len(vocab_to_int)
 config.target_vocab_size = len(vocab_to_int)
 train_enc_tokens, train_dec_tokens, test_enc_tokens,test_dec_tokens = helper.load_training_data(train_token_path)
-train_enc_tokens, train_dec_tokens = train_enc_tokens[:500000], train_dec_tokens[:500000]
+#train_enc_tokens, train_dec_tokens = train_enc_tokens[:500000], train_dec_tokens[:500000]
 #%%
 bucket_ids = helper.bucket_training_data(train_enc_tokens,train_dec_tokens)
 batches =  helper.make_batches_of_bucket_ids(bucket_ids,config.batch_size)
@@ -150,8 +150,10 @@ with tf.Session() as sess:
                         
 
             if idx % config.save_step == 0 :
-                saver.save(sess, os.path.join(config.CPT_PATH,'hrnn_bot'),global_step =steps) 
-                print('-------------- model saved ! -------------')
+                ## do not save every save step, only save lowest cost checkpoints
+                
+                #saver.save(sess, os.path.join(config.CPT_PATH,'hrnn_bot'),global_step =steps) 
+                #print('-------------- model saved ! -------------')
                 #train_ids = batches[0]
                 #pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths=helper.get_batch_seq2seq(train_enc_tokens, train_dec_tokens,vocab_to_int,train_ids)
                 batch_train_logits = sess.run(

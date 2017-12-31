@@ -12,7 +12,7 @@ from collections import Counter
 ### combine all processed token data and build vocabulary 
 
 data_path = ['../data/xiaolajiao/processed/processed_tokens.p','../data/xiaohuangji/processed/processed_tokens.p','../data/weibo_single/processed/processed_tokens.p']
-#data_path = ['../data/xiaohuangji/processed/processed_tokens.p']
+#data_path = ['../data/weibo_single/processed/processed_tokens.p']
 PROCESSED_PATH = '../data/processed'
 
 #%%
@@ -65,16 +65,23 @@ def build_vocab(pickle_file_path,CODES,vocab_size):
     counts = Counter(all_words)
     counts = {x : counts[x] for x in counts if counts[x] > 20 }   ## filter out words only appears once
     print('Create counter')
+    print('vocabulary length: {}'.format(len(counts)))
     vocab = sorted(counts, key=counts.get, reverse=True)
-    if len(vocab)> 50000: vocab=vocab[:vocab_size]
-    vocab_to_int = {word: ii for ii, word in enumerate(vocab, len(CODES))}  # enumerate start from len(CODES)
+    if len(vocab)> 10000: 
+        vocab_good=vocab[:vocab_size]
+        vocab_delete = vocab[vocab_size:]
+    else:
+        vocab_good= vocab
+        vocab_delete= []
+        
+    vocab_to_int = {word: ii for ii, word in enumerate(vocab_good, len(CODES))}  # enumerate start from len(CODES)
     vocab_to_int = dict(vocab_to_int,**CODES)
     int_to_vocab = {v_i: v for v, v_i in vocab_to_int.items()}
     
     save_file_path = os.path.join(PROCESSED_PATH,'vocab.p')
-    pickle.dump((vocab_to_int,int_to_vocab),open(save_file_path,'wb'))
+    pickle.dump((vocab_to_int,int_to_vocab,vocab_delete),open(save_file_path,'wb'))
     
-    return vocab_to_int,int_to_vocab
+    return vocab_to_int,int_to_vocab,vocab_delete
 
 #vocab_to_int,int_to_vocab = build_vocab(os.path.join(config.PROCESSED_PATH,'processed_tokens.p'),CODES)
 #%%
@@ -86,7 +93,7 @@ print('clear memory')
 
 #%%
 print('building vocabulary')
-vocab_to_int,int_to_vocab = build_vocab(os.path.join(PROCESSED_PATH,'processed_tokens.p'),CODES,50000)
+vocab_to_int,int_to_vocab, vocab_delete = build_vocab(os.path.join(PROCESSED_PATH,'processed_tokens.p'),CODES,20000)
 
 #%%
 print(len(vocab_to_int))
