@@ -1,6 +1,7 @@
 # Ignore data folder 
 *data/
 *checkpoints/
+*checkpoints_final/
 *summaries/
 
 # Byte-compiled / optimized / DLL files
