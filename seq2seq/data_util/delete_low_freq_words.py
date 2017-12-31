@@ -39,6 +39,11 @@ if __name__ == "__main__":
 
     pickle_in = open(os.path.join(PROCESSED_PATH,"vocab.p"),"rb")
     vocab_to_int, int_to_vocab, bad_words = pickle.load(pickle_in)
+    
+    ### temp solution, delete all names ###
+    bad_words.append('人名')
+    #######################################
+    
     print("Finish loading bad_words of size:", len(bad_words), "words.")
     
     pickle_file = os.path.join(PROCESSED_PATH,"processed_tokens.p")
@@ -63,7 +68,7 @@ if __name__ == "__main__":
     save_file_path = os.path.join(PROCESSED_PATH,'processed_tokens.p')
     pickle.dump((train_enc_tokens,train_dec_tokens,test_enc_tokens,test_dec_tokens),open(save_file_path,'wb'))
     
-    print('Finished filter data. Vocabulary size: {}, original training size: {}'.format(len(vocab_to_int),
+    print('Finished filter data. Vocabulary size: {}, original training size: {}, current size: {}'.format(len(vocab_to_int),
           org_training_size,
           cur_training_size))
 
