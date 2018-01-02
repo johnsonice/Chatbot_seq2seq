@@ -21,6 +21,7 @@ BUCKETS=[(10, 8), (14, 12), (19, 16), (26, 23), (43, 40),(50,50)]
 
 #######################
 ## data preprocess steps
+training_size = 1000000
 testset_size = 0.001
 max_conv_length = 6
 
@@ -28,7 +29,7 @@ max_conv_length = 6
 #######################
 ## determine structure
 #######################
-bidirection = True
+bidirection = False
 hrnn = False
 ## tensorboard
 tensorboard = True
@@ -48,14 +49,14 @@ batch_size = 16
 rnn_size = 1024
 attention_size = 1024
 # Number of Layers
-num_layers = 6
+num_layers = 4
 if bidirection: num_layers = int(num_layers/2)
-decoder_num_layers = 6 
+decoder_num_layers = 4 
 # Embedding Size
 encoding_embedding_size = 300
 decoding_embedding_size = 300
 keep_probability = 0.8
-max_target_sentence_length= 55
+max_target_sentence_length= 51
 beam_width = 5
 source_vocab_size = 100000
 target_vocab_size = 100000
@@ -69,7 +70,7 @@ learning_rate = 0.002
 learning_rate_decay_scheme = False
 clear_step = False
 start_decay_step = 100000
-decay_steps = 200000
+decay_steps = 300000
 decay_factor = 0.8
 
 
