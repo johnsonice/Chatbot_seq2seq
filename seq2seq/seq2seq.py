@@ -34,6 +34,26 @@ import config
 
 #%%
 ## some utilities functions first
+
+def get_device_str(device_id, num_gpus):
+  """Return a device string for multi-GPU setup."""
+  if num_gpus == 0:
+    return "/cpu:0"
+  device_str_output = "/gpu:%d" % (device_id % num_gpus)
+  #device_str_output = "/gpu:%d" % (1)
+  return device_str_output
+
+def gradient_clip(gradients, max_gradient_norm):
+  """Clipping gradients of a model."""
+  clipped_gradients, gradient_norm = tf.clip_by_global_norm(
+      gradients, max_gradient_norm)
+  gradient_norm_summary = [tf.summary.scalar("grad_norm", gradient_norm)]
+  gradient_norm_summary.append(
+      tf.summary.scalar("clipped_gradient", tf.global_norm(clipped_gradients)))
+
+  return clipped_gradients, gradient_norm_summary, gradient_norm
+
+
 def _single_cell(unit_type,num_units,keep_prob,residual_connection=False, device_str=None):
     """Create an instance of a single RNN cell."""
     
@@ -45,6 +65,8 @@ def _single_cell(unit_type,num_units,keep_prob,residual_connection=False, device
     elif unit_type == "layer_norm_lstm":
         single_cell = tf.contrib.rnn.LayerNormBasicLSTMCell(
             num_units,layer_norm=True)
+    elif unit_type == "nas":
+        single_cell = tf.contrib.rnn.NASCell(num_units)
     else:
         raise ValueError("Unknown unit type %s!" % unit_type)
 
@@ -53,6 +75,11 @@ def _single_cell(unit_type,num_units,keep_prob,residual_connection=False, device
     
     if residual_connection:
         single_cell = tf.contrib.rnn.ResidualWrapper(single_cell)
+    
+    ## Device Wrapper
+    if device_str:
+        single_cell = tf.contrib.rnn.DeviceWrapper(single_cell, device_str)
+        print("  %s, device=%s" % (type(single_cell).__name__, device_str))
     
     return single_cell
 
@@ -66,7 +93,7 @@ def _cell_list(unit_type, num_units, num_layers, num_residual_layers,
     
     for i in range(num_layers):
         single_cell = single_cell_fn(unit_type,num_units,keep_prob,
-                                     residual_connection=(i >= num_layers - num_residual_layers))
+                                     residual_connection=(i >= num_layers - num_residual_layers),device_str= get_device_str(i, config.num_gpus))
         cell_list.append(single_cell)
     
     return cell_list 
@@ -212,25 +239,48 @@ def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob,
     :return: tuple (RNN output, RNN state)
     """
     enc_embed_input = tf.contrib.layers.embed_sequence(rnn_inputs,source_vocab_size,encoding_embedding_size)
-    # RNN cell 
-    def make_cell(rnn_size,keep_prob):
-        enc_cell = tf.contrib.rnn.LSTMCell(rnn_size,
-                                          initializer=tf.random_uniform_initializer(-0.1, 0.1))
-        drop_cell = tf.contrib.rnn.DropoutWrapper(enc_cell,output_keep_prob=keep_prob)
-        
-        return drop_cell
+#    # RNN cell 
+#    def make_cell(rnn_size,keep_prob):
+#        enc_cell = tf.contrib.rnn.LSTMCell(rnn_size,
+#                                          initializer=tf.random_uniform_initializer(-0.1, 0.1))
+#        drop_cell = tf.contrib.rnn.DropoutWrapper(enc_cell,output_keep_prob=keep_prob)
+#        
+#        return drop_cell
     
     if config.bidirection:
-        cell_fw = tf.contrib.rnn.MultiRNNCell([make_cell(rnn_size,keep_prob) for _ in range(num_layers)])
-        cell_bw = tf.contrib.rnn.MultiRNNCell([make_cell(rnn_size,keep_prob) for _ in range(num_layers)])
-        enc_output, bi_encoder_state = tf.nn.bidirectional_dynamic_rnn( 
-                                   cell_fw, 
-                                   cell_bw,                     
-                                   enc_embed_input,
-                                   source_sequence_length,
-                                   dtype=tf.float32)
         
+            # RNN cell 
+        cell_fw = _create_rnn_cell(unit_type='lstm', num_units=rnn_size, 
+                                   num_layers=num_layers, 
+                                   num_residual_layers=0,
+                                   keep_prob=keep_prob, 
+                                   single_cell_fn=None)
+        
+        cell_bw = _create_rnn_cell(unit_type='lstm', num_units=rnn_size, 
+                                   num_layers=num_layers, 
+                                   num_residual_layers=0,
+                                   keep_prob=keep_prob, 
+                                   single_cell_fn=None)
+        
+        enc_output, bi_encoder_state = tf.nn.bidirectional_dynamic_rnn( 
+                                           cell_fw, 
+                                           cell_bw,                     
+                                           enc_embed_input,
+                                           source_sequence_length,
+                                           dtype=tf.float32)
+                
         enc_output = tf.concat(enc_output,-1)
+
+#        cell_fw = tf.contrib.rnn.MultiRNNCell([make_cell(rnn_size,keep_prob) for _ in range(num_layers)])
+#        cell_bw = tf.contrib.rnn.MultiRNNCell([make_cell(rnn_size,keep_prob) for _ in range(num_layers)])
+#        enc_output, bi_encoder_state = tf.nn.bidirectional_dynamic_rnn( 
+#                                   cell_fw, 
+#                                   cell_bw,                     
+#                                   enc_embed_input,
+#                                   source_sequence_length,
+#                                   dtype=tf.float32)
+#        
+#        enc_output = tf.concat(enc_output,-1)
         if num_layers == 1: 
             enc_state = bi_encoder_state
         else:
@@ -240,8 +290,14 @@ def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob,
                 encoder_state.append(bi_encoder_state[1][layer_id])  # backward
             
             enc_state = tuple(encoder_state)
+            #hidden_states = tf.reshape(enc_output[:,-1,:],[shape[0],shape[1],rnn_size*2])
     else:
-        enc_cell = tf.contrib.rnn.MultiRNNCell([make_cell(rnn_size,keep_prob) for _ in range(num_layers)])
+#        enc_cell = tf.contrib.rnn.MultiRNNCell([make_cell(rnn_size,keep_prob) for _ in range(num_layers)])
+        enc_cell = _create_rnn_cell(unit_type='lstm', num_units=rnn_size, 
+                                   num_layers=num_layers, 
+                                   num_residual_layers=0,
+                                   keep_prob=keep_prob, 
+                                   single_cell_fn=None)
         enc_output,enc_state = tf.nn.dynamic_rnn(enc_cell,enc_embed_input,sequence_length=source_sequence_length,dtype=tf.float32)
         
     return enc_output, enc_state

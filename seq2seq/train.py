@@ -76,9 +76,22 @@ with tf.name_scope('optimization'):
 
     # optimizer 
     optimizer = tf.train.AdamOptimizer(learning_rate)
-    gradients = optimizer.compute_gradients(cost)
-    capped_gradients = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gradients if grad is not None]
-    train_op = optimizer.apply_gradients(capped_gradients,global_step=global_step)
+    #optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+    
+    # Gradients
+    #gradients = optimizer.compute_gradients(cost,colocate_gradients_with_ops=config.colocate_gradients_with_ops)
+    #capped_gradients = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gradients if grad is not None]
+    
+    params = tf.trainable_variables()
+    gradients = tf.gradients(
+          cost,
+          params,
+          colocate_gradients_with_ops=config.colocate_gradients_with_ops)
+    
+    clipped_grads, grad_norm_summary, grad_norm = seq2seq.gradient_clip(
+          gradients, max_gradient_norm=config.max_gradient_norm)
+    
+    train_op = optimizer.apply_gradients(zip(clipped_grads, params),global_step=global_step)
 
 
 ## summaries for tensorboard 
@@ -95,7 +108,10 @@ helper._make_dir(config.CPT_PATH)
 helper._make_dir(config.CPT_PATH_FINAL)
 writer = tf.summary.FileWriter(config.SUMMARY_PATH)
 
-with tf.Session() as sess:
+sess_config = tf.ConfigProto(allow_soft_placement=True,log_device_placement=False)
+sess_config.gpu_options.allow_growth = True
+
+with tf.Session(config=sess_config) as sess:
     saver= tf.train.Saver(max_to_keep=5)
     sess.run(tf.global_variables_initializer())
     lattest_ckpt = tf.train.latest_checkpoint(config.CPT_PATH)

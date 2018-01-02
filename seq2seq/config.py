@@ -33,14 +33,20 @@ hrnn = False
 ## tensorboard
 tensorboard = True
 
+#######################
+## number of gpus####
+#######################
+num_gpus = 1
+colocate_gradients_with_ops = False
 
+    
 #######################
 ## model_inputs 
 #######################
 epochs = 10
-batch_size = 32
-rnn_size = 512
-attention_size = 512
+batch_size = 16
+rnn_size = 1024
+attention_size = 1024
 # Number of Layers
 num_layers = 6
 if bidirection: num_layers = int(num_layers/2)
@@ -53,14 +59,18 @@ max_target_sentence_length= 55
 beam_width = 5
 source_vocab_size = 100000
 target_vocab_size = 100000
+max_gradient_norm = 5.0
+
+
+
 # exponential learning rate decaly prams 
 # Learning Rate
-learning_rate = 0.001
+learning_rate = 0.002
 learning_rate_decay_scheme = False
 clear_step = False
 start_decay_step = 100000
-decay_steps = 100000
-decay_factor = 0.7
+decay_steps = 200000
+decay_factor = 0.8
 
 
 ###################
