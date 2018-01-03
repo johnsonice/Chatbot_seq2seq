@@ -124,7 +124,7 @@ def _create_rnn_cell(unit_type, num_units, num_layers, num_residual_layers, keep
     
 def _compute_loss(targets, logits,target_sequence_length,max_target_sequence_length,high_level=True):
     """Compute optimization loss."""
-    ## we can eight use a highleve seq2seq.sequence_loss api or 
+    ## we can either use a highleve seq2seq.sequence_loss api or 
     ## we can use more low level softmax_cross_entropy_with_logits api 
     
     target_weights = tf.sequence_mask(target_sequence_length, max_target_sequence_length, dtype=logits.dtype)
@@ -185,45 +185,6 @@ def model_inputs():
 #input_data, targets, lr, keep_pro, target_sequence_length, max_target_sequence_length, source_sequence_length = model_inputs()
 
 #%%
-def bidirection_encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob, 
-                   source_sequence_length, source_vocab_size, 
-                   encoding_embedding_size):
-    # Embeding
-    enc_embed_input = tf.contrib.layers.embed_sequence(rnn_inputs,source_vocab_size,encoding_embedding_size)
-    # RNN cell 
-    cell_fw = _create_rnn_cell(unit_type='lstm', num_units=rnn_size, 
-                               num_layers=num_layers, 
-                               num_residual_layers=0,
-                               keep_prob=keep_prob, 
-                               single_cell_fn=None)
-    
-    cell_bw = _create_rnn_cell(unit_type='lstm', num_units=rnn_size, 
-                               num_layers=num_layers, 
-                               num_residual_layers=0,
-                               keep_prob=keep_prob, 
-                               single_cell_fn=None)
-    
-    enc_output, bi_encoder_state = tf.nn.bidirectional_dynamic_rnn( 
-                                       cell_fw, 
-                                       cell_bw,                     
-                                       enc_embed_input,
-                                       source_sequence_length,
-                                       dtype=tf.float32)
-            
-    enc_output = tf.concat(enc_output,-1)
-    
-    encoder_state = []
-    for layer_id in range(num_layers):
-        encoder_state.append(bi_encoder_state[0][layer_id])  # forward
-        encoder_state.append(bi_encoder_state[1][layer_id])  # backward
-    
-    enc_state = tuple(encoder_state)
-    
-    #hidden_states = tf.reshape(enc_output[:,-1,:],[shape[0],shape[1],rnn_size*2])
-    
-    return enc_output, enc_state#,hidden_states
-
-#%%
 def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob, 
                    source_sequence_length, source_vocab_size, 
                    encoding_embedding_size):
@@ -267,20 +228,11 @@ def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob,
                                            cell_bw,                     
                                            enc_embed_input,
                                            source_sequence_length,
-                                           dtype=tf.float32)
+                                           dtype=tf.float32,
+                                           swap_memory=True)
                 
         enc_output = tf.concat(enc_output,-1)
 
-#        cell_fw = tf.contrib.rnn.MultiRNNCell([make_cell(rnn_size,keep_prob) for _ in range(num_layers)])
-#        cell_bw = tf.contrib.rnn.MultiRNNCell([make_cell(rnn_size,keep_prob) for _ in range(num_layers)])
-#        enc_output, bi_encoder_state = tf.nn.bidirectional_dynamic_rnn( 
-#                                   cell_fw, 
-#                                   cell_bw,                     
-#                                   enc_embed_input,
-#                                   source_sequence_length,
-#                                   dtype=tf.float32)
-#        
-#        enc_output = tf.concat(enc_output,-1)
         if num_layers == 1: 
             enc_state = bi_encoder_state
         else:
@@ -298,7 +250,12 @@ def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob,
                                    num_residual_layers=0,
                                    keep_prob=keep_prob, 
                                    single_cell_fn=None)
-        enc_output,enc_state = tf.nn.dynamic_rnn(enc_cell,enc_embed_input,sequence_length=source_sequence_length,dtype=tf.float32)
+        
+        enc_output,enc_state = tf.nn.dynamic_rnn(enc_cell,
+                                                 enc_embed_input,
+                                                 sequence_length=source_sequence_length,
+                                                 dtype=tf.float32,
+                                                 swap_memory=True)
         
     return enc_output, enc_state
 
@@ -457,14 +414,20 @@ def decoding_layer_with_attention(dec_input, encoder_output,encoder_state,
     dec_embed_input = tf.nn.embedding_lookup(dec_embeddings,dec_input)
     
         # decoder cell 
-    def make_cell(rnn_size,keep_prob):
-        enc_cell = tf.contrib.rnn.LSTMCell(rnn_size,
-                                          initializer=tf.random_uniform_initializer(-0.1, 0.1))
-        drop_cell = tf.contrib.rnn.DropoutWrapper(enc_cell,output_keep_prob=keep_prob)
-        return drop_cell
+#    def make_cell(rnn_size,keep_prob):
+#        enc_cell = tf.contrib.rnn.LSTMCell(rnn_size,
+#                                          initializer=tf.random_uniform_initializer(-0.1, 0.1))
+#        drop_cell = tf.contrib.rnn.DropoutWrapper(enc_cell,output_keep_prob=keep_prob)
+#        return drop_cell
+#    
+#    dec_cell = tf.contrib.rnn.MultiRNNCell([make_cell(rnn_size,keep_prob) for _ in range(num_layers)])
     
-    dec_cell = tf.contrib.rnn.MultiRNNCell([make_cell(rnn_size,keep_prob) for _ in range(num_layers)])
-    
+    dec_cell = _create_rnn_cell(unit_type='lstm', num_units=rnn_size, 
+                                   num_layers=num_layers, 
+                                   num_residual_layers=0,
+                                   keep_prob=keep_prob, 
+                                   single_cell_fn=None)
+
     # 3. output layer to translate the decoder's output at each time 
     output_layer = Dense(target_vocab_size,
                          kernel_initializer=tf.truncated_normal_initializer(mean = 0.0, stddev=0.1))

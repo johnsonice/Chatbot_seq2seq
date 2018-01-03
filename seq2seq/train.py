@@ -29,7 +29,6 @@ train_enc_tokens, train_dec_tokens = train_enc_tokens[:config.training_size], tr
 bucket_ids = helper.bucket_training_data(train_enc_tokens,train_dec_tokens)
 batches =  helper.make_batches_of_bucket_ids(bucket_ids,config.batch_size)
 
-## get a batch of data nd pad them 
 #%%
 ## build the network 
 # create inpute place holder
@@ -128,13 +127,13 @@ with tf.Session(config=sess_config) as sess:
     lowest_l = None
     losses = list() 
     for e in range(1,config.epochs+1):
-        if e > config.start_shufle-1: shuffle(batches)  # for debuging purpose, don't randomize batches for now 
+        if e >= config.start_shufle: shuffle(batches)  # for debuging purpose, don't randomize batches for now 
         for idx,ids in enumerate(batches,1):
-            #ids = [18948, 18949, 18950, 18953, 18954, 18957, 18958, 18959]
+            #ids = [236938,236939,236940,236941,236942,236943,236944,236945,236946,236947,236948,236949,236950,236951,236952,236953]
             pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths=helper.get_batch_seq2seq(train_enc_tokens, train_dec_tokens,vocab_to_int,ids)   
-            ## for debuging
-            #pad_encoder_batch,pad_decoder_batch,source_lengths,target_lengths,hrnn_lengths,max_length = pickle.load(open('debug.p','rb'))
-            if target_lengths[0]>config.max_target_sentence_length: continue
+            max_l = sess.run(max_target_sequence_length,{target_sequence_length:target_lengths})
+            if target_lengths[0]>config.max_target_sentence_length:
+                continue
 #            try:
             _,loss,steps,learn_r,summary = sess.run(
                     [train_op,cost,global_step,learning_rate,train_summary],
@@ -150,8 +149,8 @@ with tf.Session(config=sess_config) as sess:
             writer.add_summary(summary,global_step=steps)
             
             if idx % config.display_step == 0:
-                losses = losses[-100:]
-                l = sum(losses)/100
+                losses = losses[-config.display_step:]
+                l = sum(losses)/config.display_step
                 print('epoch: {}/{}, iteration: {}/{}, MA loss: {:.4f}, global_steps: {}, learning rate: {:.5f}'.format(e,config.epochs,idx,len(batches),l,steps,learn_r))
 
                 ## check lowest loss and save when lost is the lowest 
@@ -177,14 +176,17 @@ with tf.Session(config=sess_config) as sess:
                     {input_data: pad_encoder_batch,
                      source_sequence_length: source_lengths,
                      keep_prob: 1.0})
+                
+                ask = [int_to_vocab[s] for s in pad_encoder_batch[0]]
+                print("".join(ask))
                 if config.beam_width>0:
-                    for i in range(config.beam_width):
-                        first_res = batch_train_logits[0,:,i]
-                        result = [int_to_vocab[s] for s in first_res if s != -1]
-                        print(result)
+                    #for i in range(config.beam_width):
+                    first_res = batch_train_logits[0,:,0]
+                    result = [int_to_vocab[s] for s in first_res if s != -1]
+                    print("".join(result))
                 else:
                     result = [int_to_vocab[l] for s in batch_train_logits for l in s if l != 0]
-                    print(result)
+                    print("".join(result))
                     
 
         

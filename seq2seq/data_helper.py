@@ -204,13 +204,28 @@ def load_training_data(train_token_path):
 
 #%%
 ### put training data into buckets 
+
+def _assign_bucket_id(enc_tokens,dec_tokens):
+    '''
+    give input sentance and answer sentences, return bucket id
+    '''
+    for bucket_id, (encode_max_size, decode_max_size) in enumerate(config.BUCKETS):
+        if len(enc_tokens) <= encode_max_size and len(dec_tokens) <= decode_max_size:
+            return bucket_id
+    
+    return None
+
 def bucket_training_data(train_enc_tokens,train_dec_tokens):
     buckets = range(len(config.BUCKETS)) 
     data_id_buckets = {i:list() for i in buckets}
     for idx in range(len(train_enc_tokens)):
-        for bucket_id, (encode_max_size, decode_max_size) in enumerate(config.BUCKETS):
-            if len(train_enc_tokens[idx]) <= encode_max_size and len(train_dec_tokens[idx]) <= decode_max_size:
-                data_id_buckets[bucket_id].append(idx)
+        enc_tokens = train_enc_tokens[idx]
+        dec_tokens = train_dec_tokens[idx]
+        bucket_id = _assign_bucket_id(enc_tokens,dec_tokens)
+        #print(bucket_id)
+        if bucket_id is not None:
+            data_id_buckets[bucket_id].append(idx)
+            
     return data_id_buckets   
 
 def make_batches_of_bucket_ids(data_id_buckets,batch_size):
@@ -299,13 +314,3 @@ if __name__ == '__main__':
   main()
   
   
-### load all data and vocabulary
-#vocab_path = os.path.join(config.PROCESSED_PATH,'vocab.p')
-#train_token_path = os.path.join(config.PROCESSED_PATH,'processed_tokens.p')
-#vocab_to_int,int_to_vocab = load_vocab(vocab_path)
-#train_enc_tokens, train_dec_tokens, test_enc_tokens,test_dec_tokens = load_training_data(train_token_path)
-#
-### get a batch of data nd pad them 
-#encoder_input,decoder_input =  get_batch(train_enc_tokens, train_dec_tokens,batch_size = 1,context_length=2)
-#pad_encoder_batch = pad_context_batch(encoder_input,vocab_to_int)
-#pad_decoder_batch = pad_answer_batch(decoder_input,vocab_to_int)
