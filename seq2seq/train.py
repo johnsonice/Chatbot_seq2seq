@@ -36,10 +36,14 @@ input_data, targets, lr, keep_prob, target_sequence_length, max_target_sequence_
 # get input shape 
 input_shape = tf.shape(input_data)
 batch_size_t = input_shape[0]
+
+## create common embeding for encoder and decoder 
+embedding = seq2seq.create_embedding(load=False)
+
 ## here source sequence length might be a problem 
 with tf.variable_scope("encoder"):
     enc_output,enc_state = seq2seq.encoding_layer(tf.reverse(input_data,[-1]), config.rnn_size, config.num_layers, keep_prob, 
-                       source_sequence_length, config.source_vocab_size, config.encoding_embedding_size)
+                       source_sequence_length, config.source_vocab_size, config.encoding_embedding_size,embedding)
 
 #%%
 ## build decoder 
@@ -52,7 +56,8 @@ with tf.variable_scope("decoder"):
                                                                                source_sequence_length,target_sequence_length, config.max_target_sentence_length,
                                                                                config.rnn_size,config.decoder_num_layers, target_vocab_to_int, 
                                                                                config.target_vocab_size,batch_size_t, 
-                                                                               keep_prob, config.decoding_embedding_size,config.beam_width)
+                                                                               keep_prob, config.decoding_embedding_size,embedding,
+                                                                               config.beam_width)
     
 #%%
 
@@ -178,12 +183,14 @@ with tf.Session(config=sess_config) as sess:
                      keep_prob: 1.0})
                 
                 ask = [int_to_vocab[s] for s in pad_encoder_batch[0]]
-                print("".join(ask))
+                ans = [int_to_vocab[s] for s in pad_decoder_batch[0]]
+                print("ask: {}".format("".join(ask)))
+                print("true ans: {}".format("".join(ans)))
                 if config.beam_width>0:
                     #for i in range(config.beam_width):
                     first_res = batch_train_logits[0,:,0]
                     result = [int_to_vocab[s] for s in first_res if s != -1]
-                    print("".join(result))
+                    print("predict: {}".format("".join(result)))
                 else:
                     result = [int_to_vocab[l] for s in batch_train_logits for l in s if l != 0]
                     print("".join(result))

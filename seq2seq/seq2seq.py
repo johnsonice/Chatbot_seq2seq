@@ -43,6 +43,7 @@ def get_device_str(device_id, num_gpus):
   #device_str_output = "/gpu:%d" % (1)
   return device_str_output
 
+#%%
 def gradient_clip(gradients, max_gradient_norm):
   """Clipping gradients of a model."""
   clipped_gradients, gradient_norm = tf.clip_by_global_norm(
@@ -53,7 +54,22 @@ def gradient_clip(gradients, max_gradient_norm):
 
   return clipped_gradients, gradient_norm_summary, gradient_norm
 
-
+#%% 
+## creating or load embedding layer 
+def create_embedding(load=config.load_embeding,vocab_size=config.source_vocab_size,
+                    embedding_size=config.encoding_embedding_size,
+                    dtype=tf.float32):
+    
+    """Create embedding matrix for both encoder and decoder."""
+    with tf.variable_scope('embeddings',dtype=dtype):
+        if load: ## load embeding from pretrained embedding
+            pass
+        else:
+            embedding = tf.Variable(tf.random_uniform([vocab_size,embedding_size]))
+        
+    return embedding 
+#%%
+# some functions for creating cells
 def _single_cell(unit_type,num_units,keep_prob,residual_connection=False, device_str=None):
     """Create an instance of a single RNN cell."""
     
@@ -82,7 +98,7 @@ def _single_cell(unit_type,num_units,keep_prob,residual_connection=False, device
         print("  %s, device=%s" % (type(single_cell).__name__, device_str))
     
     return single_cell
-
+    
 def _cell_list(unit_type, num_units, num_layers, num_residual_layers,
                keep_prob,single_cell_fn=None):
     """Create a list of RNN cells."""
@@ -120,7 +136,7 @@ def _create_rnn_cell(unit_type, num_units, num_layers, num_residual_layers, keep
         return cell_list[0]
     else:  # Multi layers
         return tf.contrib.rnn.MultiRNNCell(cell_list)
-
+#%%
     
 def _compute_loss(targets, logits,target_sequence_length,max_target_sequence_length,high_level=True):
     """Compute optimization loss."""
@@ -163,6 +179,7 @@ def _get_learning_rate_decay(global_step, config):
                             name="learning_rate_decay_cond")             ## using staircase decay 
 
 
+
 #%%
 def model_inputs():
     """
@@ -187,7 +204,7 @@ def model_inputs():
 #%%
 def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob, 
                    source_sequence_length, source_vocab_size, 
-                   encoding_embedding_size):
+                   encoding_embedding_size,enc_embedding):
     """
     Create encoding layer
     :param rnn_inputs: Inputs for the RNN
@@ -197,29 +214,26 @@ def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob,
     :param source_sequence_length: a list of the lengths of each sequence in the batch
     :param source_vocab_size: vocabulary size of source data
     :param encoding_embedding_size: embedding size of source data
+    :param enc_embedding: encoder embedding
     :return: tuple (RNN output, RNN state)
     """
-    enc_embed_input = tf.contrib.layers.embed_sequence(rnn_inputs,source_vocab_size,encoding_embedding_size)
-#    # RNN cell 
-#    def make_cell(rnn_size,keep_prob):
-#        enc_cell = tf.contrib.rnn.LSTMCell(rnn_size,
-#                                          initializer=tf.random_uniform_initializer(-0.1, 0.1))
-#        drop_cell = tf.contrib.rnn.DropoutWrapper(enc_cell,output_keep_prob=keep_prob)
-#        
-#        return drop_cell
+    
+    ## lookup, turn words into vector
+        #enc_embed_input = tf.contrib.layers.embed_sequence(rnn_inputs,source_vocab_size,encoding_embedding_size)
+    enc_embed_input=tf.nn.embedding_lookup(enc_embedding,rnn_inputs)
     
     if config.bidirection:
         
             # RNN cell 
         cell_fw = _create_rnn_cell(unit_type='lstm', num_units=rnn_size, 
                                    num_layers=num_layers, 
-                                   num_residual_layers=0,
+                                   num_residual_layers=config.num_residual_layers,
                                    keep_prob=keep_prob, 
                                    single_cell_fn=None)
         
         cell_bw = _create_rnn_cell(unit_type='lstm', num_units=rnn_size, 
                                    num_layers=num_layers, 
-                                   num_residual_layers=0,
+                                   num_residual_layers=config.num_residual_layers,
                                    keep_prob=keep_prob, 
                                    single_cell_fn=None)
         
@@ -247,7 +261,7 @@ def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob,
 #        enc_cell = tf.contrib.rnn.MultiRNNCell([make_cell(rnn_size,keep_prob) for _ in range(num_layers)])
         enc_cell = _create_rnn_cell(unit_type='lstm', num_units=rnn_size, 
                                    num_layers=num_layers, 
-                                   num_residual_layers=0,
+                                   num_residual_layers=config.num_residual_layers,
                                    keep_prob=keep_prob, 
                                    single_cell_fn=None)
         
@@ -407,24 +421,16 @@ def decoding_layer_with_attention(dec_input, encoder_output,encoder_state,
                    source_sequence_length,target_sequence_length, max_target_sequence_length,
                    rnn_size,
                    num_layers, target_vocab_to_int, target_vocab_size,
-                   batch_size, keep_prob, decoding_embedding_size,beam_width=0):
+                   batch_size, keep_prob, decoding_embedding_size,dec_embedding,
+                   beam_width=0):
     
     # 1. decoder embeding
-    dec_embeddings = tf.Variable(tf.random_uniform([target_vocab_size,decoding_embedding_size]))
-    dec_embed_input = tf.nn.embedding_lookup(dec_embeddings,dec_input)
-    
-        # decoder cell 
-#    def make_cell(rnn_size,keep_prob):
-#        enc_cell = tf.contrib.rnn.LSTMCell(rnn_size,
-#                                          initializer=tf.random_uniform_initializer(-0.1, 0.1))
-#        drop_cell = tf.contrib.rnn.DropoutWrapper(enc_cell,output_keep_prob=keep_prob)
-#        return drop_cell
-#    
-#    dec_cell = tf.contrib.rnn.MultiRNNCell([make_cell(rnn_size,keep_prob) for _ in range(num_layers)])
+    #dec_embeddings = tf.Variable(tf.random_uniform([target_vocab_size,decoding_embedding_size]))
+    dec_embed_input = tf.nn.embedding_lookup(dec_embedding,dec_input)
     
     dec_cell = _create_rnn_cell(unit_type='lstm', num_units=rnn_size, 
                                    num_layers=num_layers, 
-                                   num_residual_layers=0,
+                                   num_residual_layers=config.num_residual_layers,
                                    keep_prob=keep_prob, 
                                    single_cell_fn=None)
 
@@ -451,7 +457,7 @@ def decoding_layer_with_attention(dec_input, encoder_output,encoder_state,
         inference_decoder_output = decoding_layer_infer_beam_search(encoder_output,
                                                                     encoder_state,
                                                                     dec_cell, 
-                                                                    dec_embeddings, 
+                                                                    dec_embedding, 
                                                                     start_of_sequence_id, 
                                                                     end_of_sequence_id, 
                                                                     source_sequence_length,
