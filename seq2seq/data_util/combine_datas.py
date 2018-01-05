@@ -63,7 +63,7 @@ def build_vocab(pickle_file_path,CODES,vocab_size):
         all_words.extend(list(_flatten(t)))
     print('Finish flaten tokens')
     counts = Counter(all_words)
-    counts = {x : counts[x] for x in counts if counts[x] > 20 }   ## filter out words only appears once
+    #counts = {x : counts[x] for x in counts if counts[x] > 20 }   ## filter out words only appears once
     print('Create counter')
     print('vocabulary length: {}'.format(len(counts)))
     vocab = sorted(counts, key=counts.get, reverse=True)

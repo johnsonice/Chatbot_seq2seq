@@ -41,7 +41,7 @@ if __name__ == "__main__":
     vocab_to_int, int_to_vocab, bad_words = pickle.load(pickle_in)
     
     ### temp solution, delete all names ###
-    bad_words.append('人名')
+    bad_words.append('_人名_')
     #######################################
     
     print("Finish loading bad_words of size:", len(bad_words), "words.")
