@@ -32,6 +32,7 @@ def replace_tokens(text,replace_dict):
     text = re.sub(pattern,'',text)
     return text
 
+#%%
 
 def read_txt(file_path,encoding):
     with open(os.path.join(DATA_PATH,file_path), 'r',encoding=encoding,errors='replace') as f:
@@ -111,7 +112,7 @@ def save_tokenized_data(context,answers):
 
 #%%
 #def main():
-scaling_factor = 100    
+scaling_factor = 50    
 
 convs_list = []
 data_files = os.listdir(DATA_PATH)
@@ -134,5 +135,4 @@ _ = save_tokenized_data(context*scaling_factor,answers*scaling_factor)
 #
 #if __name__ == '__main__':
 #  main()
-
-
+#train_enc_tokens, train_dec_tokens, x,y = _

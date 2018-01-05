@@ -254,7 +254,7 @@ def main():
     context,answers =  context_answers(convs)
     _ = train_test_split(context,answers)
     _ = save_tokenized_data(os.path.join(config.PROCESSED_PATH,'processed_text.p'))
-    _ = build_vocab(os.path.join(config.PROCESSED_PATH,'processed_tokens.p'),CODES)  ## take processed tokens, to generate dictionary
+    #_ = build_vocab(os.path.join(config.PROCESSED_PATH,'processed_tokens.p'),CODES)  ## take processed tokens, to generate dictionary
 
 
 if __name__ == '__main__':

@@ -15,19 +15,20 @@ import os
 #import time
 import multiprocessing
 from multiprocessing import Pool
+from functools import partial
 
 
 #%%
 # methods
-def no_bad_words(line): # replace name of person with a replacement word, i.e. "_人名_"
+def no_bad_words(line,bad_words): # replace name of person with a replacement word, i.e. "_人名_"
     for word in line:
         if word in bad_words:
             return False
     return True
 
-def process(t): 
+def process(t,bad_words): 
     enc_tokens, dec_tokens = t
-    if no_bad_words(enc_tokens) and no_bad_words(dec_tokens):
+    if no_bad_words(enc_tokens,bad_words) and no_bad_words(dec_tokens,bad_words):
         return (enc_tokens,dec_tokens)
     else:
         return None
@@ -55,7 +56,8 @@ if __name__ == "__main__":
     num_cores = multiprocessing.cpu_count()
     print('Runing filtering in {} cores'.format(num_cores))
     p = Pool(num_cores)
-    results = p.map(process, tokens)
+    partial_process = partial(process, bad_words=bad_words)
+    results = p.map(partial_process, tokens)
     p.close()
     p.join()
     print('Finish filtering')
