@@ -58,16 +58,22 @@ def gradient_clip(gradients, max_gradient_norm):
 ## creating or load embedding layer 
 def create_embedding(load=config.load_embeding,vocab_size=config.source_vocab_size,
                     embedding_size=config.encoding_embedding_size,
-                    dtype=tf.float32):
+                    dtype=tf.float32,same=False):
     
     """Create embedding matrix for both encoder and decoder."""
-    with tf.variable_scope('embeddings',dtype=dtype):
-        if load: ## load embeding from pretrained embedding
-            pass
-        else:
+    if same:
+        with tf.variable_scope('embeddings',dtype=dtype):
             embedding = tf.Variable(tf.random_uniform([vocab_size,embedding_size]))
         
-    return embedding 
+        encoder_embedding = embedding
+        decoder_embedding = encoder_embedding
+    else:
+        with tf.variable_scope('encoder_embeddings',dtype=dtype):
+            encoder_embedding=tf.Variable(tf.random_uniform([vocab_size,embedding_size]))
+        with tf.variable_scope('decoder_embeddings',dtype=dtype):
+            decoder_embedding=tf.Variable(tf.random_uniform([vocab_size,embedding_size]))
+            
+    return encoder_embedding,decoder_embedding
 #%%
 # some functions for creating cells
 def _single_cell(unit_type,num_units,keep_prob,residual_connection=False, device_str=None):
@@ -225,13 +231,13 @@ def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob,
     if config.bidirection:
         
             # RNN cell 
-        cell_fw = _create_rnn_cell(unit_type='lstm', num_units=rnn_size, 
+        cell_fw = _create_rnn_cell(unit_type=config.cell_type, num_units=rnn_size, 
                                    num_layers=num_layers, 
                                    num_residual_layers=config.num_residual_layers,
                                    keep_prob=keep_prob, 
                                    single_cell_fn=None)
         
-        cell_bw = _create_rnn_cell(unit_type='lstm', num_units=rnn_size, 
+        cell_bw = _create_rnn_cell(unit_type=config.cell_type, num_units=rnn_size, 
                                    num_layers=num_layers, 
                                    num_residual_layers=config.num_residual_layers,
                                    keep_prob=keep_prob, 
@@ -259,7 +265,7 @@ def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob,
             #hidden_states = tf.reshape(enc_output[:,-1,:],[shape[0],shape[1],rnn_size*2])
     else:
 #        enc_cell = tf.contrib.rnn.MultiRNNCell([make_cell(rnn_size,keep_prob) for _ in range(num_layers)])
-        enc_cell = _create_rnn_cell(unit_type='lstm', num_units=rnn_size, 
+        enc_cell = _create_rnn_cell(unit_type=config.cell_type, num_units=rnn_size, 
                                    num_layers=num_layers, 
                                    num_residual_layers=config.num_residual_layers,
                                    keep_prob=keep_prob, 
@@ -428,7 +434,7 @@ def decoding_layer_with_attention(dec_input, encoder_output,encoder_state,
     #dec_embeddings = tf.Variable(tf.random_uniform([target_vocab_size,decoding_embedding_size]))
     dec_embed_input = tf.nn.embedding_lookup(dec_embedding,dec_input)
     
-    dec_cell = _create_rnn_cell(unit_type='lstm', num_units=rnn_size, 
+    dec_cell = _create_rnn_cell(unit_type=config.cell_type, num_units=rnn_size, 
                                    num_layers=num_layers, 
                                    num_residual_layers=config.num_residual_layers,
                                    keep_prob=keep_prob, 
@@ -461,7 +467,7 @@ def decoding_layer_with_attention(dec_input, encoder_output,encoder_state,
                                                                     start_of_sequence_id, 
                                                                     end_of_sequence_id, 
                                                                     source_sequence_length,
-                                                                    max_target_sequence_length, 
+                                                                    config.max_target_sentence_length, 
                                                                     target_vocab_size, 
                                                                     output_layer, 
                                                                     batch_size, 

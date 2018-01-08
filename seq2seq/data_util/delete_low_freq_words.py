@@ -67,7 +67,7 @@ if __name__ == "__main__":
     train_dec_tokens = [t[1] for t in r]
     cur_training_size = len(r)
     
-    save_file_path = os.path.join(PROCESSED_PATH,'processed_tokens.p')
+    save_file_path = os.path.join(PROCESSED_PATH,'processed_tokens_clean.p')
     pickle.dump((train_enc_tokens,train_dec_tokens,test_enc_tokens,test_dec_tokens),open(save_file_path,'wb'))
     
     print('Finished filter data. Vocabulary size: {}, original training size: {}, current size: {}'.format(len(vocab_to_int),

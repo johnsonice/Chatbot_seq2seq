@@ -19,12 +19,12 @@ import seq2seq
 ## first, load and pad data 
 ## load all data and vocabulary
 vocab_path = os.path.join(config.OVERALL_PROCESSED_PATH,'vocab.p')
-train_token_path = os.path.join(config.OVERALL_PROCESSED_PATH,'processed_tokens.p')
+train_token_path = os.path.join(config.OVERALL_PROCESSED_PATH,'processed_tokens_clean.p')
 vocab_to_int,int_to_vocab = helper.load_vocab(vocab_path)
 config.source_vocab_size = len(vocab_to_int)
 config.target_vocab_size = len(vocab_to_int)
 train_enc_tokens, train_dec_tokens, test_enc_tokens,test_dec_tokens = helper.load_training_data(train_token_path)
-train_enc_tokens, train_dec_tokens = train_enc_tokens[:config.training_size], train_dec_tokens[:config.training_size]
+train_enc_tokens, train_dec_tokens = train_enc_tokens[config.start_point:config.start_point+config.training_size], train_dec_tokens[config.start_point:config.start_point+config.training_size]
 #%%
 bucket_ids = helper.bucket_training_data(train_enc_tokens,train_dec_tokens)
 batches =  helper.make_batches_of_bucket_ids(bucket_ids,config.batch_size)
@@ -38,12 +38,12 @@ input_shape = tf.shape(input_data)
 batch_size_t = input_shape[0]
 
 ## create common embeding for encoder and decoder 
-embedding = seq2seq.create_embedding(load=False)
+encoder_embedding,decoder_embedding = seq2seq.create_embedding(load=False,same=True)
 
 ## here source sequence length might be a problem 
 with tf.variable_scope("encoder"):
     enc_output,enc_state = seq2seq.encoding_layer(tf.reverse(input_data,[-1]), config.rnn_size, config.num_layers, keep_prob, 
-                       source_sequence_length, config.source_vocab_size, config.encoding_embedding_size,embedding)
+                       source_sequence_length, config.source_vocab_size, config.encoding_embedding_size,encoder_embedding)
 
 #%%
 ## build decoder 
@@ -53,10 +53,10 @@ target_vocab_to_int = vocab_to_int
 dec_input = seq2seq.process_decoder_input(targets,vocab_to_int)
 with tf.variable_scope("decoder"):
     training_decoder_output, inference_decoder_output = seq2seq.decoding_layer_with_attention(dec_input, enc_output,enc_state,
-                                                                               source_sequence_length,target_sequence_length, config.max_target_sentence_length,
+                                                                               source_sequence_length,target_sequence_length, max_target_sequence_length,#config.max_target_sentence_length,
                                                                                config.rnn_size,config.decoder_num_layers, target_vocab_to_int, 
                                                                                config.target_vocab_size,batch_size_t, 
-                                                                               keep_prob, config.decoding_embedding_size,embedding,
+                                                                               keep_prob, config.decoding_embedding_size,decoder_embedding,
                                                                                config.beam_width)
     
 #%%
@@ -76,7 +76,7 @@ learning_rate = seq2seq._get_learning_rate_decay(global_step, config)
 
 with tf.name_scope('optimization'):
     # Loss function    
-    cost = seq2seq._compute_loss(targets,training_logits,target_sequence_length,max_target_sequence_length)
+    cost = seq2seq._compute_loss(targets,training_logits,target_sequence_length,max_target_sequence_length,high_level=True)
 
     # optimizer 
     optimizer = tf.train.AdamOptimizer(learning_rate)
