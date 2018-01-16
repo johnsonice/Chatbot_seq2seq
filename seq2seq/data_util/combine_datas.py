@@ -11,7 +11,7 @@ from collections import Counter
 
 ### combine all processed token data and build vocabulary 
 
-data_path = ['../data/xiaolajiao/processed/processed_tokens.p','../data/xiaohuangji/processed/processed_tokens.p','../data/weibo_single/processed/processed_tokens.p']
+data_path = ['../data/universal/processed/processed_tokens.p','../data/xiaohuangji/processed/processed_tokens.p','../data/weibo_single/processed/processed_tokens.p']
 #data_path = ['../data/weibo_single/processed/processed_tokens.p']
 PROCESSED_PATH = '../data/processed'
 
@@ -96,4 +96,4 @@ print('building vocabulary')
 vocab_to_int,int_to_vocab, vocab_delete = build_vocab(os.path.join(PROCESSED_PATH,'processed_tokens.p'),CODES,20000)
 
 #%%
-print(len(vocab_to_int))
+print("cleaned vocabulary length: ",len(vocab_to_int))

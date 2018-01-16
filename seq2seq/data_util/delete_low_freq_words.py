@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Sat Dec 30 15:38:39 2017
@@ -37,7 +37,8 @@ def process(t,bad_words):
 if __name__ == "__main__":
     
     PROCESSED_PATH = '../data/processed'
-
+    IMF_server = True
+    
     pickle_in = open(os.path.join(PROCESSED_PATH,"vocab.p"),"rb")
     vocab_to_int, int_to_vocab, bad_words = pickle.load(pickle_in)
     
@@ -53,7 +54,10 @@ if __name__ == "__main__":
     org_training_size = len(train_enc_tokens)
     
     #%%
-    num_cores = multiprocessing.cpu_count()
+    if IMF_server:
+        num_cores = 20
+    else:
+        num_cores = multiprocessing.cpu_count()
     print('Runing filtering in {} cores'.format(num_cores))
     p = Pool(num_cores)
     partial_process = partial(process, bad_words=bad_words)
