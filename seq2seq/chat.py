@@ -29,7 +29,11 @@ class chatbot(object):
         self.vocab_to_int,self.int_to_vocab = helper.load_vocab(vocab_path)
         self.graph, self.sess = self.load_graph()
         self.custom_dict = custom_dict
-        self.inference_logits,self.input_data,self.source_sequence_length,self.keep_prob = self.get_tensors()
+        
+        (self.inference_logits,self.input_data,self.source_sequence_length,self.training_logits,
+        self.target_sequence_length,self.source_sequence_length,
+        self.keep_prob) = self.get_tensors()
+                
         print('Chatbot model created')
         
     def load_graph(self):
@@ -54,9 +58,15 @@ class chatbot(object):
         #target_sequence_length = graph.get_tensor_by_name('target_sequence_length:0')
         source_sequence_length = self.graph.get_tensor_by_name('source_sequence_length:0')
         #hrnn_sequence_length = graph.get_tensor_by_name('sequence_length:0')
+        
+        ## some tensor for evaluation model
+        training_logits = self.graph.get_tensor_by_name('logits:0')
+        target_sequence_length = self.graph.get_tensor_by_name('target_sequence_length:0')
+        source_sequence_length = self.graph.get_tensor_by_name('source_sequence_length:0')
+
         keep_prob = self.graph.get_tensor_by_name('keep_prob:0')
             
-        return inference_logits,input_data,source_sequence_length,keep_prob
+        return inference_logits,input_data,source_sequence_length,training_logits,target_sequence_length,source_sequence_length,keep_prob
 
 
     def get_response(self,user_in):
