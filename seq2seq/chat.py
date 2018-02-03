@@ -30,8 +30,8 @@ class chatbot(object):
         self.graph, self.sess = self.load_graph()
         self.custom_dict = custom_dict
         
-        (self.inference_logits,self.input_data,self.source_sequence_length,self.training_logits,
-        self.target_sequence_length,self.source_sequence_length,
+        (self.input_data,self.targets,self.inference_logits,self.training_logits,
+        self.source_sequence_length,self.target_sequence_length,
         self.keep_prob) = self.get_tensors()
                 
         print('Chatbot model created')
@@ -60,13 +60,14 @@ class chatbot(object):
         #hrnn_sequence_length = graph.get_tensor_by_name('sequence_length:0')
         
         ## some tensor for evaluation model
+        targets = self.graph.get_tensor_by_name('targets:0')
         training_logits = self.graph.get_tensor_by_name('logits:0')
         target_sequence_length = self.graph.get_tensor_by_name('target_sequence_length:0')
         source_sequence_length = self.graph.get_tensor_by_name('source_sequence_length:0')
 
         keep_prob = self.graph.get_tensor_by_name('keep_prob:0')
             
-        return inference_logits,input_data,source_sequence_length,training_logits,target_sequence_length,source_sequence_length,keep_prob
+        return input_data,targets,inference_logits,training_logits,source_sequence_length,target_sequence_length,keep_prob
 
 
     def get_response(self,user_in):
@@ -83,6 +84,28 @@ class chatbot(object):
         
         result = self.post_process(output)
         return result
+    
+    def evaluate(self,user_in,target):
+        user_in_tokens = [list(jieba.cut(user_in[0]))]
+        pad_encoder_input = np.array(helper.pad_answer_batch(user_in_tokens,self.vocab_to_int))
+        target_tokens = [list(jieba.cut(target[0]))]
+        pad_decoder_input = np.array(helper.pad_answer_batch(target_tokens,self.vocab_to_int))
+    
+        source_lengths = [pad_encoder_input.shape[1]]*pad_encoder_input.shape[0]
+        target_lengths = [pad_decoder_input.shape[1]]*pad_encoder_input.shape[0]
+    
+        logits = self.sess.run(
+                self.training_logits,
+                {self.input_data: pad_encoder_input,
+                 self.targets: pad_decoder_input,
+                 self.source_sequence_length: source_lengths,
+                 self.target_sequence_length: target_lengths,
+                 self.keep_prob: 1.0}
+                )
+    
+        p_final = self.calculate_probability(pad_decoder_input,logits)
+        
+        return logits, p_final
     
     def replace_custom_tokens(self,res):
         # use these three lines to do the replacement
@@ -113,7 +136,26 @@ class chatbot(object):
             result = self.replace_custom_tokens(''.join(result))
             return result 
     
+    def softmax(self,x):
+        """Compute softmax values for each sets of scores in x."""
+        e_x = np.exp(x - np.max(x))
+        return e_x / e_x.sum()
 
+    def calculate_probability(self,pad_decoder_input,logits):
+        p = np.apply_along_axis(softmax,2,l)
+        
+        p_final = []
+        for row in logits.shape[0]:
+            p_seq = []
+            for idx,val in enumerate(pad_decoder_input):
+                 p_seq.append(p[idx][val])
+            
+            p_final.append(np.product(p_seq))
+        
+        return p_final
+            
+            
+        
             
 #%%
 
@@ -141,19 +183,17 @@ for i in user_ins:
 
 #%%
 #
-#ask = list()
-#ans = list()
-#for i in user_ins:
-#    user_in = [i]
-#    ask.append(user_in)
-#    ans.append(chatbot.get_response(user_in))
-#
-##%%
-#ask = [x[0] for x in ask]
-#result = list()
-#for i,e in enumerate(ans):
-#    result.append((ask[i],ans[i]))
-#    
-##%%
-#pickle.dump(result,open('results.p','wb'))
-## x = pickle.load(open('results.p','rb'))
+
+def softmax(x):
+    """Compute softmax values for each sets of scores in x."""
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum()
+#%%
+user_in = ['我还不了解你，不知道说什么']
+ans = ['我是卖东西的']
+ans2 = ['去你妈']
+l,p = chatbot.evaluate(user_in,ans)
+
+#%%
+
+test = np.apply_along_axis(softmax,2,l)
