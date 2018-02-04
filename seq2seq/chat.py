@@ -86,9 +86,9 @@ class chatbot(object):
         return result
     
     def evaluate(self,user_in,target):
-        user_in_tokens = [list(jieba.cut(user_in[0]))]
+        user_in_tokens = [list(jieba.cut(u)) for u in user_in]
         pad_encoder_input = np.array(helper.pad_answer_batch(user_in_tokens,self.vocab_to_int))
-        target_tokens = [list(jieba.cut(target[0]))]
+        target_tokens = [list(jieba.cut(t)) for t in target]
         pad_decoder_input = np.array(helper.pad_answer_batch(target_tokens,self.vocab_to_int))
     
         source_lengths = [pad_encoder_input.shape[1]]*pad_encoder_input.shape[0]
@@ -142,13 +142,13 @@ class chatbot(object):
         return e_x / e_x.sum()
 
     def calculate_probability(self,pad_decoder_input,logits):
-        p = np.apply_along_axis(softmax,2,l)
+        p = np.apply_along_axis(self.softmax,2,logits)
         
         p_final = []
-        for row in logits.shape[0]:
+        for row in range(logits.shape[0]):
             p_seq = []
-            for idx,val in enumerate(pad_decoder_input):
-                 p_seq.append(p[idx][val])
+            for idx,val in enumerate(pad_decoder_input[row]):
+                 p_seq.append(p[row][idx][val])
             
             p_final.append(np.product(p_seq))
         
@@ -159,41 +159,57 @@ class chatbot(object):
             
 #%%
 
-## load chatbot 
-chatbot = chatbot(config)
-
-#%%
-user_ins= ['我还不了解你，不知道说什么','学习我的思维？','你知道我在想什么吗？',
-             '到底是怎么回事','你怎么看','其实我最大的兴趣是挣钱，还是高效率的',
-             '你在做什么','听说你能陪人聊天？',
-             '你能帮我卖东西么','你是做什么工作的','你是人还是机器人？']
-
-#%%
-for i in user_ins:
-    user_in = [i]
-    print('ask:',user_in)
-    print('response:',chatbot.get_response(user_in)[0])
-
-
-#%5
-##%%
-#user_in = ['你喜欢吃薯条吗']
-#response = chatbot.get_response(user_in)
-#print(response)
-
-#%%
+### load chatbot 
+#chatbot = chatbot(config)
 #
+##%%
+#user_ins= ['你能挣钱么？','你都能做些什么','你还有些什么本事','你能干嘛','你叫什么名字',
+#           '我还不了解你，不知道说什么','学习我的思维？','你知道我在想什么吗？',
+#             '到底是怎么回事','你怎么看','其实我最大的兴趣是挣钱，还是高效率的',
+#             '你在做什么','听说你能陪人聊天？',
+#             '你能帮我卖东西么','你是做什么工作的','你是人还是机器人？']
+##%%
+#for i in user_ins:
+#    user_in = [i]
+#    print('ask:',user_in)
+#    print('response:',chatbot.get_response(user_in)[0])
 
-def softmax(x):
-    """Compute softmax values for each sets of scores in x."""
-    e_x = np.exp(x - np.max(x))
-    return e_x / e_x.sum()
-#%%
-user_in = ['我还不了解你，不知道说什么']
-ans = ['我是卖东西的']
-ans2 = ['去你妈']
-l,p = chatbot.evaluate(user_in,ans)
-
-#%%
-
-test = np.apply_along_axis(softmax,2,l)
+#
+##%5
+###%%
+##user_in = ['你喜欢吃薯条吗']
+##response = chatbot.get_response(user_in)
+##print(response)
+#
+##%%
+##
+#
+#def softmax(x):
+#    """Compute softmax values for each sets of scores in x."""
+#    e_x = np.exp(x - np.max(x))
+#    return e_x / e_x.sum()
+##%%
+#    
+#ans = ['我是','去你妈','我也不懂','我也']
+#user_in = ['我还不了解你，不知道说什么']*len(ans)
+#
+#
+#l,p= chatbot.evaluate(user_in,ans)
+#print(p)
+#
+#
+###%%
+##target_tokens = [list(jieba.cut(a)) for a in ans]
+##pad_decoder_input = np.array(helper.pad_answer_batch(target_tokens,chatbot.vocab_to_int))
+###%%
+##
+##p = chatbot.calculate_probability(pad_decoder_input,l)
+##print(p)
+#
+##%%
+#
+#    
+#
+#
+##%%
+##test = np.apply_along_axis(softmax,2,l)
