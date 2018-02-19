@@ -93,7 +93,6 @@ def save_tokenized_data(train_enc,train_dec,PROCESSED_PATH):
 
 
 #%%
-
 def main():
     data_path = "../data/universal/raw/universal.csv"
     PROCESSED_PATH = "../data/universal/processed"
