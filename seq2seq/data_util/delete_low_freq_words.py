@@ -37,7 +37,7 @@ def process(t,bad_words):
 if __name__ == "__main__":
     
     PROCESSED_PATH = '../data/processed'
-    IMF_server = True
+    IMF_server = False
     
     pickle_in = open(os.path.join(PROCESSED_PATH,"vocab.p"),"rb")
     vocab_to_int, int_to_vocab, bad_words = pickle.load(pickle_in)

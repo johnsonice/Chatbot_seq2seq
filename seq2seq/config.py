@@ -7,8 +7,6 @@ Created on Mon Oct  9 16:35:29 2017
 """
 # parameters for processing the dataset
 DATA_PATH = './data/xiaohuangji'
-#CONVO_FILE = 'xiaohuangji50w_fenciA.conv'
-#LINE_FILE = 'xiaohuangji50w_fenciA.conv'
 LINE_FILE = 'xiaohuangji50w_nofenci.conv'
 USER_DICT = './data_util/userdict.txt'
 OUTPUT_FILE = 'output_convo.txt'
@@ -22,7 +20,7 @@ BUCKETS=[(5,5),(5,10),(10,5),(10, 10), (15, 15), (20,20)]
 #######################
 ## data preprocess steps
 start_point=0
-training_size = 600000
+training_size = None
 testset_size = 0.001
 max_conv_length = 6
 
