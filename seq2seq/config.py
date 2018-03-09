@@ -16,6 +16,7 @@ CPT_PATH = 'checkpoints'
 CPT_PATH_FINAL = 'checkpoints_final'
 SUMMARY_PATH = 'summaries'
 BUCKETS=[(5,5),(5,10),(10,5),(10, 10), (15, 15), (20,20)]
+num_buckets = 6
 
 #######################
 ## data preprocess steps
@@ -63,6 +64,8 @@ encoding_embedding_size = 300
 decoding_embedding_size = 300
 keep_probability = 0.8
 max_target_sentence_length= 21
+src_max_len = 20
+tgt_max_len = 30
 beam_width = 3
 source_vocab_size = 100000
 target_vocab_size = 100000
