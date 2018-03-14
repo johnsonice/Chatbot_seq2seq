@@ -12,26 +12,6 @@ import config
 
 ## Build Seq2seq model 
 
-### model_inputs 
-## Number of Epochs
-#epochs = 1
-## Batch Size
-#batch_size = 64
-## RNN Size
-#rnn_size = 100
-## Number of Layers
-#num_layers = 1
-## Embedding Size
-#encoding_embedding_size = 500
-#decoding_embedding_size = 500
-## Learning Rate
-#learning_rate = 0.0001
-## Dropout Keep Probability
-#keep_probability = 0.5
-#display_step = 1000
-#source_vocab_size = 10000
-
-
 #%%
 ## some utilities functions first
 
@@ -206,6 +186,24 @@ def model_inputs():
     return input_data, targets, lr, keep_pro, target_sequence_length, max_target_sequence_length, source_sequence_length,#hrnn_sequence_length
 
 #input_data, targets, lr, keep_pro, target_sequence_length, max_target_sequence_length, source_sequence_length = model_inputs()
+#%%
+def model_inputs_iter(iterator):
+    """
+    Create TF Placeholders for input, targets, learning rate, and lengths of source and target sequences.
+    :return: Tuple (input, targets, learning rate, keep probability, target sequence length,
+    max target sequence length, source sequence length)
+    """
+    
+    input_data = tf.placeholder(tf.int32,[None,None],name='input')
+    targets = tf.placeholder(tf.int32,[None,None],name='targets')
+    lr = tf.placeholder(tf.float32,name='learning_rate')
+    keep_pro = tf.placeholder(tf.float32,name='keep_prob')
+    target_sequence_length = tf.placeholder(tf.int32,(None,),name='target_sequence_length')
+    max_target_sequence_length = tf.reduce_max(target_sequence_length,name='max_target_len')
+    source_sequence_length = tf.placeholder(tf.int32,(None,),name='source_sequence_length')
+    #hrnn_sequence_length = tf.placeholder(tf.int32,(None,),name = 'hrnn_sequence_length')
+    
+    return input_data, targets, lr, keep_pro, target_sequence_length, max_target_sequence_length, source_sequence_length,#hrnn_sequence_length
 
 #%%
 def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob, 

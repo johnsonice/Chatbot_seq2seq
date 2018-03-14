@@ -146,70 +146,33 @@ def get_iterator(enc_dataset,dec_dataset,src_vocab_table,tgt_vocab_table,
     ## now construct returned iter object ###
     #########################################
     
+    
+    
+    
     return batched_dataset
 
 #%%
 batched_dataset = get_iterator(train_enc_num, train_dec_num,vocab_to_int,vocab_to_int,config)
-batched_iterator = batched_dataset.make_one_shot_iterator()
+batched_iterator = batched_dataset.make_initializable_iterator()
 #%%
 source, source_lengths, target, target_lengths = batched_iterator.get_next()
 #%%
 
 with tf.Session() as sess:
-    for x in range(1):
-        _ = sess.run([source,source_lengths])
-        print(_) # output: [ 0.42116176  0.40666069]
+    for i in range(10):
+        sess.run(batched_iterator.initializer)
+        while True:
+            try:
+                _ = sess.run([source,source_lengths])
+                #print(x)
+                #print("range: {} - {}".format(min(_[1]), max(_[1])))
+                #print(_)
+            except tf.errors.OutOfRangeError:
+                print("end of the iteration {}".format(i))
+                break
         
-        
-    
-##%%
-#def enc_generator():
-#    seq = np.array(train_enc_num)
-#    for el in seq:
-#        yield el
-#
-#def dec_generator():
-#    seq = np.array(train_dec_num)
-#    for el in seq:
-#        yield el
-#
-#enc_dataset = tf.data.Dataset().from_generator(enc_generator,
-#                                           output_types=tf.int32, 
-#                                           output_shapes=tf.TensorShape([None]))
-#
-#enc_dataset = enc_dataset.map(lambda words: (words,tf.size(words)))
-#
-#dec_dataset = tf.data.Dataset().from_generator(dec_generator,
-#                                           output_types=tf.int32, 
-#                                           output_shapes=tf.TensorShape([None]))
-#
-#dec_dataset = dec_dataset.map(lambda words: (words,tf.size(words)))
-#
-#source_target_dataset = tf.data.Dataset.zip((enc_dataset, dec_dataset))
-#
-#batched_dataset = source_target_dataset.padded_batch(
-#        100000,                                      # batch size
-#        padded_shapes=((tf.TensorShape([None]),  # source vectors of unknown size
-#                        tf.TensorShape([])),     # size(source)
-#                       (tf.TensorShape([None]),  # target vectors of unknown size
-#                        tf.TensorShape([]))),    # size(target)
-#        padding_values=((vocab_to_int['<EOS>'],  # source vectors padded on the right with src_eos_id
-#                         vocab_to_int['<PAD>']),          # size(source) -- unused
-#                        (vocab_to_int['<EOS>'],  # target vectors padded on the right with tgt_eos_id
-#                         vocab_to_int['<PAD>'])))         # size(target) -- unused
-#
-#
-##%%
-#batched_iterator = batched_dataset.make_one_shot_iterator()
-##%%
-#((source, source_lengths), (target, target_lengths)) = batched_iterator.get_next()
-##%%
-#
-#with tf.Session() as sess:
-#    for x in range(100):
-#        x = sess.run([source,source_lengths])
-#        print() # output: [ 0.42116176  0.40666069]
-    
+    #%%
+
     
     
     
