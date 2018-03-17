@@ -8,26 +8,23 @@ Created on Sat Feb  3 20:51:20 2018
 
 ### test generative evaluation model 
 
-import chat
+import chat_test
 import config
 import numpy as np
-#%%
-
-bot = chat.chatbot(config)
-
-
-#%%
-
 import os 
-import pickle 
-
-PROCESSED_PATH = './data/xiaolajiao/processed/processed_tokens.p'
-train_enc_tokens, train_dec_tokens, test_enc_tokens,test_dec_tokens= pickle.load(open(PROCESSED_PATH,'rb'))
+import csv
 #%%
 
-asks = ["".join(e) for e in train_enc_tokens]
-ans = ["".join(a) for a in train_dec_tokens]
+bot = chat_test.chatbot(config)
 
+
+#%%
+
+data_path = './data_util/xiaolajiao_answers/xiaolajiao_answers.csv'
+with open(data_path, 'r',encoding='utf-8') as f:
+    reader = csv.reader(f)
+    ans = list(reader)
+    ans = [l[0] for l in ans]
 #%%
 
 user_ins= ['你能挣钱么？','你都能做些什么','你还有些什么本事','你能干嘛','你叫什么名字','我还不了解你，不知道说什么','学习我的思维？','你知道我在想什么吗？',
@@ -40,12 +37,15 @@ user_ins= ['你能挣钱么？','你都能做些什么','你还有些什么本�
 ans_in = ans
 for ask in user_ins:
     ask_in = [ask]*len(ans_in)
-    l,p = bot.evaluate(ask_in,ans_in)
+    l,p = bot.evaluate(ask_in,ans_in,True)
     print("ask:",ask)
     print("answer: ", ans_in[np.argmax(p)])
 
 #%%
-
+for i in user_ins:
+    user_in = [i]
+    print('ask:',user_in)
+    print('response:',bot.get_response(user_in)[0])
 #index = 80
 #
 #ans_in = ans

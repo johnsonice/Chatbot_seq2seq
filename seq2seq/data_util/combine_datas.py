@@ -11,7 +11,7 @@ from collections import Counter
 
 ### combine all processed token data and build vocabulary 
 
-data_path = ['../data/universal/processed/processed_tokens.p','../data/xiaohuangji/processed/processed_tokens.p','../data/weibo_single/processed/processed_tokens.p']
+data_path = ['../data/universal/processed/processed_tokens.p','../data/jason/processed/processed_tokens_no_punctuation.p']
 #data_path = ['../data/weibo_single/processed/processed_tokens.p']
 PROCESSED_PATH = '../data/processed'
 

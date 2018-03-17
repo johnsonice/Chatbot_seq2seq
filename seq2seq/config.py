@@ -7,8 +7,6 @@ Created on Mon Oct  9 16:35:29 2017
 """
 # parameters for processing the dataset
 DATA_PATH = './data/xiaohuangji'
-#CONVO_FILE = 'xiaohuangji50w_fenciA.conv'
-#LINE_FILE = 'xiaohuangji50w_fenciA.conv'
 LINE_FILE = 'xiaohuangji50w_nofenci.conv'
 USER_DICT = './data_util/userdict.txt'
 OUTPUT_FILE = 'output_convo.txt'
@@ -18,11 +16,12 @@ CPT_PATH = 'checkpoints'
 CPT_PATH_FINAL = 'checkpoints_final'
 SUMMARY_PATH = 'summaries'
 BUCKETS=[(5,5),(5,10),(10,5),(10, 10), (15, 15), (20,20)]
+num_buckets = 10
 
 #######################
 ## data preprocess steps
 start_point=0
-training_size = 600000
+training_size = None
 testset_size = 0.001
 max_conv_length = 6
 
@@ -64,7 +63,11 @@ num_residual_layers = 0
 encoding_embedding_size = 300
 decoding_embedding_size = 300
 keep_probability = 0.8
-max_target_sentence_length= 21
+max_target_sentence_length= 31
+
+src_max_len = 30
+tgt_max_len = 30
+
 beam_width = 3
 source_vocab_size = 100000
 target_vocab_size = 100000

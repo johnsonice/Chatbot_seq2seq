@@ -24,7 +24,10 @@ vocab_to_int,int_to_vocab = helper.load_vocab(vocab_path)
 config.source_vocab_size = len(vocab_to_int)
 config.target_vocab_size = len(vocab_to_int)
 train_enc_tokens, train_dec_tokens, test_enc_tokens,test_dec_tokens = helper.load_training_data(train_token_path)
-train_enc_tokens, train_dec_tokens = train_enc_tokens[config.start_point:config.start_point+config.training_size], train_dec_tokens[config.start_point:config.start_point+config.training_size]
+if config.training_size is None:
+    pass
+else:
+    train_enc_tokens, train_dec_tokens = train_enc_tokens[config.start_point:config.start_point+config.training_size], train_dec_tokens[config.start_point:config.start_point+config.training_size]
 #%%
 bucket_ids = helper.bucket_training_data(train_enc_tokens,train_dec_tokens)
 batches =  helper.make_batches_of_bucket_ids(bucket_ids,config.batch_size)
