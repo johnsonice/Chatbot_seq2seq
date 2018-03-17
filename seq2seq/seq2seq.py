@@ -250,9 +250,34 @@ def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob,
                                            source_sequence_length,
                                            dtype=tf.float32,
                                            swap_memory=True)
-                
+    
         enc_output = tf.concat(enc_output,-1)
 
+        bi_encoder_outputs = enc_output
+    
+    add_more = True
+    if add_more:
+        uni_cell = _create_rnn_cell(unit_type=config.cell_type, num_units=rnn_size, 
+                                   num_layers=2, 
+                                   num_residual_layers=config.num_residual_layers,
+                                   keep_prob=keep_prob, 
+                                   single_cell_fn=None)
+        
+
+
+        encoder_outputs, encoder_state = tf.nn.dynamic_rnn(
+          uni_cell,
+          bi_encoder_outputs,
+          dtype=tf.float32,
+          sequence_length=source_sequence_length)#,
+          #time_major=self.time_major)
+        
+        #num_uni_layers = 2
+        encoder_state = bi_encoder_state+encoder_state
+
+    return encoder_outputs, encoder_state
+'''
+This code below is not in the gnmt_model
         if num_layers == 1: 
             enc_state = bi_encoder_state
         else:
@@ -263,7 +288,7 @@ def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob,
             
             enc_state = tuple(encoder_state)
             #hidden_states = tf.reshape(enc_output[:,-1,:],[shape[0],shape[1],rnn_size*2])
-    else:
+
 #        enc_cell = tf.contrib.rnn.MultiRNNCell([make_cell(rnn_size,keep_prob) for _ in range(num_layers)])
         enc_cell = _create_rnn_cell(unit_type=config.cell_type, num_units=rnn_size, 
                                    num_layers=num_layers, 
@@ -278,7 +303,7 @@ def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob,
                                                  swap_memory=True)
         
     return enc_output, enc_state
-
+    '''
 #%%
 def process_decoder_input(target_data, target_vocab_to_int):
     """

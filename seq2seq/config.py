@@ -30,7 +30,7 @@ max_conv_length = 6
 #######################
 ## determine structure
 #######################
-bidirection = False
+bidirection = True
 hrnn = False
 ## tensorboard
 tensorboard = True
@@ -54,10 +54,10 @@ batch_size = 32
 rnn_size = 1024
 attention_size = 1024
 
-# Number of Layers
-num_layers = 4
+# Number of Layers jason
+num_layers = 2
 if bidirection: num_layers = int(num_layers/2)
-decoder_num_layers = 4 
+decoder_num_layers = 4
 num_residual_layers = 0 
 
 # Embedding Size
