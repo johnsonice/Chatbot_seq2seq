@@ -224,6 +224,7 @@ def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob,
     
     ## lookup, turn words into vector
         #enc_embed_input = tf.contrib.layers.embed_sequence(rnn_inputs,source_vocab_size,encoding_embedding_size)
+
     enc_embed_input=tf.nn.embedding_lookup(enc_embedding,rnn_inputs)
     
     if config.bidirection:
@@ -256,7 +257,7 @@ def encoding_layer(rnn_inputs, rnn_size, num_layers, keep_prob,
     add_more = True
     if add_more:
         uni_cell = _create_rnn_cell(unit_type=config.cell_type, num_units=rnn_size, 
-                                   num_layers=2, 
+                                   num_layers=config.num_uni_layers, 
                                    num_residual_layers=config.num_residual_layers,
                                    keep_prob=keep_prob, 
                                    single_cell_fn=None)

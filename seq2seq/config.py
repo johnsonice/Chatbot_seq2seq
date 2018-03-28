@@ -53,11 +53,14 @@ batch_size = 32
 rnn_size = 1024
 attention_size = 1024
 
-# Number of Layers jason
-num_layers = 2
-if bidirection: num_layers = int(num_layers/2)
+# Number of Layers
+num_layers = 2 #this is the number of bi directional layers, was messy to change variable names
+assert num_layers % 2 == 0
+num_layers = int(num_layers/2)
+num_uni_layers = 2 #this is the number of uni directional layers
 decoder_num_layers = 4
 num_residual_layers = 0 
+assert num_layers*2 + num_uni_layers == decoder_num_layers
 
 # Embedding Size
 encoding_embedding_size = 300
