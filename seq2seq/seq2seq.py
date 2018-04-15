@@ -366,7 +366,7 @@ def decoding_layer_train(encoder_output,encoder_state, dec_cell, dec_embed_input
 #%%
 def decoding_layer_infer_beam_search(encoder_output,encoder_state, dec_cell, dec_embeddings, start_of_sequence_id,
                          end_of_sequence_id,source_sequence_length,max_target_sequence_length,
-                         vocab_size, output_layer, batch_size, keep_prob,beam_width=0,length_penalty_weight=0.0):
+                         vocab_size, output_layer, batch_size, keep_prob,beam_width=0,length_penalty_weight=0.7):
     """
     Create a decoding layer for inference
     :param encoder_state: Encoder state
