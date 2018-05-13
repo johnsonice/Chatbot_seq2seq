@@ -168,21 +168,21 @@ class chatbot(object):
             
 #        
 #%%
-#
-### load chatbot 
-chatbot = chatbot(config)
-#
-#%%
-user_ins= ['你能挣钱么？','你都能做些什么','你还有些什么本事','你能干嘛','你叫什么名字',
-           '我还不了解你，不知道说什么','学习我的思维？','你知道我在想什么吗？',
-             '到底是怎么回事','你怎么看','其实我最大的兴趣是挣钱，还是高效率的',
-             '你在做什么','听说你能陪人聊天？',
-             '你能帮我卖东西么','你是做什么工作的','你是人还是机器人？']
-#%%
-for i in user_ins:
-    user_in = [i]
-    print('ask:',user_in)
-    print('response:',chatbot.get_response(user_in)[0])
+##
+#### load chatbot 
+#chatbot = chatbot(config)
+##
+##%%
+#user_ins= ['你能挣钱么？','你都能做些什么','你还有些什么本事','你能干嘛','你叫什么名字',
+#           '我还不了解你，不知道说什么','学习我的思维？','你知道我在想什么吗？',
+#             '到底是怎么回事','你怎么看','其实我最大的兴趣是挣钱，还是高效率的',
+#             '你在做什么','听说你能陪人聊天？',
+#             '你能帮我卖东西么','你是做什么工作的','你是人还是机器人？']
+##%%
+#for i in user_ins:
+#    user_in = [i]
+#    print('ask:',user_in)
+#    print('response:',chatbot.get_response(user_in)[0])
 
 #
 ##%5

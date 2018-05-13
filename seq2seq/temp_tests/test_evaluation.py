@@ -46,6 +46,8 @@ for i in user_ins:
     user_in = [i]
     print('ask:',user_in)
     print('response:',bot.get_response(user_in)[0])
+
+
 #index = 80
 #
 #ans_in = ans

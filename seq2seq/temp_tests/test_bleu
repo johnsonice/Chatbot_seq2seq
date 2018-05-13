@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Sat May 12 21:47:09 2018
+
+@author: chengyu
+"""
+
+import os 
+import data_helper as helper
+import chat_test
+import config 
+import numpy as np
+from scripts.bleu import calculate_bleu_from_lists
+
+#%%
+## first, load and pad data 
+## load all data and vocabulary
+vocab_path = os.path.join(config.OVERALL_PROCESSED_PATH,'vocab.p')
+train_token_path = os.path.join(config.OVERALL_PROCESSED_PATH,'processed_tokens_clean.p')
+train_enc_tokens, train_dec_tokens, test_enc_tokens,test_dec_tokens = helper.load_training_data(train_token_path)
+
+#%%
+ids = np.random.randint(100000,len(train_enc_tokens),2000)
+test_ask = [train_enc_tokens[i] for i in ids]
+test_ask = ["".join(i) for i in test_ask]
+test_ans = ["".join(train_dec_tokens[i]) for i in ids]
+#%%
+i = 104
+print(test_ask[i])
+print(test_ans[i])
+
+#%%
+bot = chat_test.chatbot(config)
+#%%
+candidates = []
+for i in test_ask:
+    user_in = [i]
+    candidates.append(bot.get_response(user_in)[0])
+
+#%%
+i = 101
+print(candidates[i])
+print(test_ans[i])
+
+#%%
+score_list,avg_score = calculate_bleu_from_lists(test_ans,candidates)
+print(avg_score)
+
