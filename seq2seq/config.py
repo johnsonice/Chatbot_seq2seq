@@ -57,8 +57,8 @@ attention_size = 1024
 num_layers = 2 #this is the number of bi directional layers, was messy to change variable names
 assert num_layers % 2 == 0
 num_layers = int(num_layers/2)
-num_uni_layers = 2 #this is the number of uni directional layers
-decoder_num_layers = 4
+num_uni_layers = 4 #this is the number of uni directional layers
+decoder_num_layers = 6
 num_residual_layers = 0 
 assert num_layers*2 + num_uni_layers == decoder_num_layers
 
